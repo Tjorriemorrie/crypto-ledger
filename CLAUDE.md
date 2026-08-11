@@ -37,6 +37,42 @@ in the same change. Stack changes include:
 Both files must describe the stack that is actually in the repo — no planned or removed tools.
 If a change makes a documented setup step wrong, fix the step, don't just append to it.
 
+### Never commit unless told to
+
+Do not run `git commit`, `git push`, `git merge`, or any other history-changing command
+unless the user asks for it in that message. Finishing a task means leaving the changes in
+the working tree and saying what changed — not committing them. "Commit this" applies to
+that commit only; it is not standing permission for the next one.
+
+Staging (`git add`) and read-only inspection (`status`, `diff`, `log`) are fine at any time.
+
+### Commit messages list the changes
+
+`git log` is the source for the changelog, so every commit body must enumerate what actually
+changed. Format:
+
+```
+<subject: imperative, <= 72 chars, no trailing period>
+
+<optional one or two lines of context: why this change exists>
+
+- <change 1>
+- <change 2>
+```
+
+Rules for the bullets:
+
+- One bullet per user-visible or behavioural change, written so it can be pasted into a
+  changelog without editing: say what changed, not which file was touched.
+  Good: `Add Transaction model with amount, asset and timestamp fields`.
+  Bad: `Update models.py`.
+- Cover every change in the commit. If the list runs past roughly seven bullets, the commit
+  is doing too much — split it.
+- Prefix bullets that need it: `BREAKING:` for anything requiring manual action (migrations
+  that drop data, renamed settings, changed env vars), `Fix:` for bug fixes.
+- Leave out pure noise — formatter reflows, lint fixes with no behaviour change — unless
+  that is the entire point of the commit.
+
 ## Commands
 
 - Install: `uv sync`
