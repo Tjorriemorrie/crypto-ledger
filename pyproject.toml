@@ -1,0 +1,108 @@
+[project]
+name = "crypto-ledger"
+version = "0.1.0"
+description = "Manually keep track of your crypto transactions"
+readme = "README.md"
+requires-python = "==3.13.1"
+dependencies = [
+    "django>=6.1",
+]
+
+[dependency-groups]
+dev = [
+    "django-upgrade>=1.31.1",
+    "pre-commit>=4.6.2",
+    "pytest>=8",
+    "ruff>=0.9",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = ["**/migrations/*"]
+
+[tool.ruff.lint]
+select = [
+    "A",     # flake8-builtins
+    "ARG",   # flake8-unused-arguments
+    "ASYNC", # flake8-async
+    "B",     # flake8-bugbear
+    "BLE",   # flake8-blind-except
+    "C4",    # flake8-comprehensions
+    "C90",   # mccabe complexity
+    "DJ",    # flake8-django
+    "DTZ",   # flake8-datetimez
+    "E",     # pycodestyle errors
+    "EM",    # flake8-errmsg
+    "ERA",   # eradicate (commented-out code)
+    "EXE",   # flake8-executable
+    "F",     # pyflakes
+    "FBT",   # flake8-boolean-trap
+    "FLY",   # flynt
+    "FURB",  # refurb
+    "G",     # flake8-logging-format
+    "I",     # isort
+    "ICN",   # flake8-import-conventions
+    "INP",   # flake8-no-pep420
+    "INT",   # flake8-gettext
+    "ISC",   # flake8-implicit-str-concat
+    "LOG",   # flake8-logging
+    "N",     # pep8-naming
+    "PERF",  # perflint
+    "PGH",   # pygrep-hooks
+    "PIE",   # flake8-pie
+    "PL",    # pylint
+    "PT",    # flake8-pytest-style
+    "PTH",   # flake8-use-pathlib
+    "PYI",   # flake8-pyi
+    "Q",     # flake8-quotes
+    "RET",   # flake8-return
+    "RSE",   # flake8-raise
+    "RUF",   # ruff-specific
+    "S",     # flake8-bandit
+    "SIM",   # flake8-simplify
+    "SLF",   # flake8-self
+    "SLOT",  # flake8-slots
+    "T10",   # flake8-debugger
+    "T20",   # flake8-print
+    "TC",    # flake8-type-checking
+    "TID",   # flake8-tidy-imports
+    "TRY",   # tryceratops
+    "UP",    # pyupgrade
+    "W",     # pycodestyle warnings
+    "YTT",   # flake8-2020
+]
+ignore = [
+    "COM812", # conflicts with the formatter
+    "ISC001", # conflicts with the formatter
+    "RUF012", # Django class attrs are conventionally plain mutables
+    "TRY003", # long messages outside exception classes are fine here
+]
+
+[tool.ruff.lint.per-file-ignores]
+"crypto_ledger/settings.py" = [
+    "E501", # generated AUTH_PASSWORD_VALIDATORS lines are long
+    "S105", # SECRET_KEY literal is flagged as a hardcoded password
+]
+"manage.py" = [
+    "EM101",    # Django's generated boilerplate
+    "INP001",
+    "PLC0415",  # the deferred django import is intentional
+]
+"**/tests/*" = ["ARG", "PLR2004", "S101"]
+"**/test_*.py" = ["ARG", "PLR2004", "S101"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["crypto_ledger", "main"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
