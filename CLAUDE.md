@@ -37,6 +37,14 @@ in the same change. Stack changes include:
 Both files must describe the stack that is actually in the repo — no planned or removed tools.
 If a change makes a documented setup step wrong, fix the step, don't just append to it.
 
+### Work on main, never on a branch
+
+This is a single-developer repo with a linear history. All commits go directly to `main`.
+
+Do not create branches, switch branches, or open pull requests — not for large changes,
+not for risky ones, not "to be safe". If a change feels too big for `main`, split it into
+smaller commits on `main` instead. The only exception is an explicit request for a branch.
+
 ### Never commit unless told to
 
 Do not run `git commit`, `git push`, `git merge`, or any other history-changing command
