@@ -1,0 +1,25 @@
+{% extends "main/base.html" %}
+
+{% block title %}{% if account %}Edit {{ account.name }}{% else %}New account{% endif %} — crypto-ledger{% endblock %}
+
+{% block content %}
+  {% if account %}
+    <h1>Edit account</h1>
+    <p class="muted">Holds {{ account.currency }} — the currency is fixed once the account exists.</p>
+  {% else %}
+    <h1>New account</h1>
+    <p class="muted">One account per place value sits — a wallet, an exchange, a bank account.</p>
+  {% endif %}
+
+  <form method="post" class="card">
+    {% csrf_token %}
+    {{ form.as_p }}
+    {% if account %}
+      <button type="submit">Save account</button>
+      <a href="{{ account.get_absolute_url }}">Cancel</a>
+    {% else %}
+      <button type="submit">Create account</button>
+      <a href="{% url 'account-list' %}">Cancel</a>
+    {% endif %}
+  </form>
+{% endblock %}

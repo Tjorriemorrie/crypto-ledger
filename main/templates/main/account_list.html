@@ -1,0 +1,61 @@
+{% extends "main/base.html" %}
+{% load ledger %}
+
+{% block title %}Accounts — crypto-ledger{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <h1>Accounts</h1>
+    <a class="button" href="{% url 'account-create' %}">New account</a>
+  </div>
+
+  <div class="stats">
+    <div class="card">
+      <div class="muted">Total value</div>
+      <div class="value">{{ total|zar }}</div>
+    </div>
+    <div class="card">
+      <div class="muted">Rates</div>
+      {% for rate in rates %}
+        <div class="value">1 {{ rate.asset }} = {{ rate.zar_per_unit|zar }}</div>
+        <div class="muted">{{ rate.date|date:"Y-m-d" }}, downloaded {{ rate.fetched_at|date:"H:i" }}</div>
+      {% empty %}
+        <div class="value">—</div>
+        <div class="muted">Nothing downloaded yet</div>
+      {% endfor %}
+      <form method="post" action="{% url 'rate-refresh' %}">
+        {% csrf_token %}
+        <button type="submit" class="link">Refresh</button>
+      </form>
+    </div>
+  </div>
+
+  {% if rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Asset</th>
+          <th class="num">Balance</th>
+          <th class="num">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td><a href="{{ row.account.get_absolute_url }}">{{ row.account.name }}</a></td>
+            <td class="muted">{{ row.account.currency }}</td>
+            <td class="num">{{ row.balance|qty }}</td>
+            <td class="num">{{ row.value|zar }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="muted">
+      Balances are valued at the latest rates downloaded. ZAR accounts are worth their balance,
+      and the stablecoins are held at a dollar each.
+    </p>
+  {% else %}
+    <p class="empty">No accounts yet. Create one for each wallet, exchange or bank account.</p>
+  {% endif %}
+{% endblock %}

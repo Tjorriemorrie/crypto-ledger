@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = "==3.13.1"
 dependencies = [
     "django>=6.1",
+    "requests>=2.32",
 ]
 
 [dependency-groups]
@@ -13,6 +14,7 @@ dev = [
     "django-upgrade>=1.31.1",
     "pre-commit>=4.6.2",
     "pytest>=8",
+    "pytest-django>=4.9",
     "ruff>=0.9",
 ]
 
@@ -84,6 +86,12 @@ ignore = [
     "E501", # generated AUTH_PASSWORD_VALIDATORS lines are long
     "S105", # SECRET_KEY literal is flagged as a hardcoded password
 ]
+"main/context_processors.py" = [
+    "ARG001", # Django hands every context processor the request, used or not
+]
+"crypto_ledger/wsgi.py" = [
+    "E402", # the rates import has to come after Django has loaded the apps
+]
 "manage.py" = [
     "EM101",    # Django's generated boilerplate
     "INP001",
@@ -105,4 +113,5 @@ max-complexity = 10
 convention = "google"
 
 [tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "crypto_ledger.settings"
 testpaths = ["tests"]

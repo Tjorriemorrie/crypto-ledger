@@ -62,6 +62,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "main.context_processors.accounts",
             ],
         },
     },
@@ -116,6 +117,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = "static/"
+
+
+# Exchange rates
+# BTC/ZAR prices are downloaded from CoinGecko. Switching this off keeps the app off the
+# network entirely — it then values quantities only at rates already in the database, which is
+# what the test suite does.
+
+RATES_DOWNLOAD = True
 
 
 # Email

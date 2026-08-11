@@ -1,0 +1,100 @@
+{% extends "main/base.html" %}
+{% load ledger %}
+
+{% block title %}{{ account.name }} — crypto-ledger{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <div>
+      <h1>{{ account.name }}</h1>
+      <p class="muted">{{ account.currency }}{% if account.note %} — {{ account.note }}{% endif %}</p>
+    </div>
+    <div class="actions">
+      <a href="{% url 'account-edit' account.pk %}">Edit account</a>
+      <a class="button" href="{% url 'transaction-create' account.pk %}">New transaction</a>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="card">
+      <div class="muted">Balance</div>
+      <div class="value">{{ balance|qty }} {{ account.currency }}</div>
+      <div class="muted">{{ value|zar }}</div>
+    </div>
+    <div class="card">
+      <div class="muted">Unmatched debits — still held</div>
+      <div class="value">{{ unmatched.debit|qty }} {{ account.currency }}</div>
+    </div>
+    <div class="card">
+      <div class="muted">Unmatched credits</div>
+      <div class="value">{{ unmatched.credit|qty }} {{ account.currency }}</div>
+    </div>
+  </div>
+
+  <h2>Transactions</h2>
+  {% if rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Other account</th>
+          <th class="num">Debit</th>
+          <th class="num">Credit</th>
+          <th class="num">Value then</th>
+          <th class="num">Balance</th>
+          <th class="num">Unmatched</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="muted">{{ row.entry.transaction.occurred_on|date:"Y-m-d" }}</td>
+            <td>{{ row.entry.transaction.description|default:"—" }}</td>
+            <td>
+              {% with other=row.entry.counterpart %}
+                {% if other %}
+                  <a href="{{ other.account.get_absolute_url }}">{{ other.account.name }}</a>
+                  <span class="muted">{{ other.quantity|qty }} {{ other.account.currency }}</span>
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              {% endwith %}
+            </td>
+            <td class="num debit">{% if row.entry.is_debit %}{{ row.quantity|qty }}{% endif %}</td>
+            <td class="num credit">{% if row.entry.is_credit %}{{ row.quantity|qty }}{% endif %}</td>
+            <td class="num muted">{{ row.value|zar }}</td>
+            <td class="num">{{ row.balance|qty }}</td>
+            <td class="num">{{ row.remaining|qty }}</td>
+            <td class="num">
+              <div class="actions">
+                {% if row.entry.is_credit and row.remaining > 0 %}
+                  <form method="post" action="{% url 'entry-match' row.entry.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="link">Match FIFO</button>
+                  </form>
+                {% endif %}
+                {% if row.deletable %}
+                  <form method="post"
+                        action="{% url 'transaction-delete' account.pk row.entry.transaction.pk %}"
+                        onsubmit="return confirm('Delete this transaction from both accounts?')">
+                    {% csrf_token %}
+                    <button type="submit" class="link danger">Delete</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="muted">
+      Unmatched is what FIFO has not consumed yet: on a debit, the part still held; on a credit,
+      the part with no earlier debit to account for it. Value then is what the quantity was
+      worth in ZAR on the date it moved.
+    </p>
+  {% else %}
+    <p class="empty">No transactions on this account yet.</p>
+  {% endif %}
+{% endblock %}

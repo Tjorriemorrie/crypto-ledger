@@ -1,0 +1,18 @@
+{% extends "main/base.html" %}
+
+{% block title %}New transaction — {{ account.name }}{% endblock %}
+
+{% block content %}
+  <h1>New transaction</h1>
+  <p class="muted">
+    From <strong>{{ account.name }}</strong>. Every transaction has two sides: this account and
+    the one you pick below.
+  </p>
+
+  <form method="post" class="card">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Record transaction</button>
+    <a href="{{ account.get_absolute_url }}">Cancel</a>
+  </form>
+{% endblock %}

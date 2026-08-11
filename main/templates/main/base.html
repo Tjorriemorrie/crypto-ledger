@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}crypto-ledger{% endblock %}</title>
+    <style>
+      :root {
+        --bg: #14161a;
+        --panel: #1c1f26;
+        --line: #2c313b;
+        --text: #e6e8ec;
+        --muted: #8b93a3;
+        --debit: #5fd39a;
+        --credit: #f08a7a;
+        --accent: #7aa2f7;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      header {
+        border-bottom: 1px solid var(--line);
+        padding: 1rem 1.5rem;
+        display: flex;
+        gap: 1rem;
+        align-items: baseline;
+      }
+      header a.brand { font-weight: 600; color: var(--text); text-decoration: none; }
+      header nav { display: flex; gap: 1rem; flex-wrap: wrap; }
+      header nav a { text-decoration: none; }
+      header nav a[aria-current="page"] { color: var(--text); font-weight: 600; }
+      main { max-width: 60rem; margin: 0 auto; padding: 1.5rem; }
+      a { color: var(--accent); }
+      h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+      h2 { font-size: 1.05rem; margin: 2rem 0 .75rem; }
+      .muted { color: var(--muted); }
+      .row { display: flex; gap: 1rem; align-items: baseline; justify-content: space-between; }
+      .actions { display: flex; gap: 1rem; align-items: baseline; }
+      td .actions { justify-content: flex-end; }
+      button.link.danger { color: var(--credit); }
+      table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+      th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); }
+      th { color: var(--muted); font-weight: 500; font-size: .8rem; text-transform: uppercase; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+      .debit { color: var(--debit); }
+      .credit { color: var(--credit); }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+      }
+      .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+      .stats .card { flex: 1 1 10rem; }
+      .stats .value { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+      form p { margin: 0 0 .9rem; }
+      label { display: block; color: var(--muted); font-size: .85rem; margin-bottom: .2rem; }
+      input, select, textarea {
+        width: 100%;
+        padding: .45rem .55rem;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        font: inherit;
+      }
+      input[type="checkbox"] { width: auto; }
+      .helptext, .errorlist { font-size: .8rem; }
+      .helptext { color: var(--muted); }
+      .errorlist { color: var(--credit); list-style: none; padding: 0; margin: .2rem 0; }
+      button, .button {
+        background: var(--accent);
+        color: #10131a;
+        border: 0;
+        border-radius: 6px;
+        padding: .45rem .9rem;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+      }
+      button.link {
+        background: none;
+        color: var(--accent);
+        font-weight: 400;
+        padding: 0;
+        text-decoration: underline;
+      }
+      .messages { list-style: none; padding: 0; margin: 0 0 1rem; }
+      .messages li {
+        padding: .5rem .75rem;
+        border-radius: 6px;
+        background: var(--panel);
+        border-left: 3px solid var(--accent);
+        margin-bottom: .4rem;
+      }
+      .empty { color: var(--muted); padding: 1.5rem 0; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="{% url 'account-list' %}">crypto-ledger</a>
+      <nav>
+        {% for nav_account in nav_accounts %}
+          <a href="{{ nav_account.get_absolute_url }}"
+             {% if nav_account.pk == account.pk %}aria-current="page"{% endif %}>{{ nav_account.name }}</a>
+        {% empty %}
+          <span class="muted">no accounts yet</span>
+        {% endfor %}
+      </nav>
+    </header>
+    <main>
+      {% if messages %}
+        <ul class="messages">
+          {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
