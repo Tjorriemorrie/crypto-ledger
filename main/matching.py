@@ -67,6 +67,11 @@ def match_credit_fifo(credit):
         if remaining <= ZERO:
             break
         available = debit.quantity - debit.matched
+        if available <= ZERO:
+            # SQLite sums decimals as floats, so a debit that is exactly used up can still
+            # pass the query's filter by a rounding epsilon. Decimal arithmetic here has the
+            # last word — matching one would write a zero-quantity match.
+            continue
         taken = min(remaining, available)
         matches.append(_consume(debit, credit, taken))
         remaining -= taken
