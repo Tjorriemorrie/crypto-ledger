@@ -94,6 +94,28 @@ def _consume(debit, credit, quantity):
     return match
 
 
+@db_transaction.atomic
+def rebuild_account_matching(account):
+    """Throw away an account's matches and replay FIFO over its credits, oldest first.
+
+    Every write to the ledger runs this on the accounts it touched, because almost anything can
+    change which lots the credits should have consumed: a backdated purchase gives an earlier
+    sale something to eat, a corrected date or quantity changes how far a lot goes, and a
+    deletion takes a lot away altogether. Patching the matches around each case would need a
+    rule per case; replaying needs none, because FIFO is deterministic — the result is the
+    matching the ledger would have reached had it always read this way.
+
+    Credits on a transaction with matching turned off are passed over, so a disposal left open
+    on purpose stays open however often the account is replayed.
+    """
+    Match.objects.filter(debit__account=account).delete()
+    open_credits = Entry.objects.filter(
+        account=account, quantity__lt=0, transaction__match_fifo=True
+    ).order_by("transaction__occurred_on", "id")
+    for credit in open_credits:
+        match_credit_fifo(credit)
+
+
 def unmatched_totals(account):
     """Return the still-open debit and credit quantities on an account.
 
@@ -111,15 +133,3 @@ def unmatched_totals(account):
         else:
             open_credit += remaining
     return {"debit": open_debit, "credit": open_credit}
-
-
-def matched_quantity_by_entry(account):
-    """Return `{entry_id: matched quantity}` for every entry on `account` in one query."""
-    totals = {}
-    rows = Match.objects.filter(
-        models.Q(debit__account=account) | models.Q(credit__account=account)
-    ).values_list("debit_id", "credit_id", "quantity")
-    for debit_id, credit_id, quantity in rows:
-        totals[debit_id] = totals.get(debit_id, ZERO) + quantity
-        totals[credit_id] = totals.get(credit_id, ZERO) + quantity
-    return totals

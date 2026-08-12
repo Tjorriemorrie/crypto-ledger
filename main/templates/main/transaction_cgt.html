@@ -1,0 +1,246 @@
+{% extends "main/base.html" %}
+{% load ledger %}
+
+{% block title %}Capital gain — {{ account.name }} — crypto-ledger{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <div>
+      <h1>Capital gain</h1>
+      <p class="muted">
+        {{ transaction.occurred_on|date:"Y-m-d" }}
+        {% if transaction.description %} — {{ transaction.description }}{% endif %}
+      </p>
+    </div>
+    <div class="actions no-print">
+      <button type="button" class="link" onclick="window.print()">Print</button>
+      <a href="{{ account.get_absolute_url }}">Back to {{ account.name }}</a>
+    </div>
+  </div>
+
+  {% if kind == "disposal" %}
+    <div class="stats">
+      <div class="card">
+        <div class="muted">Proceeds</div>
+        <div class="value">{{ proceeds|zar }}</div>
+        <div class="note">
+          What came in for the
+          <strong>{{ quantity|qty }} {{ disposal.account.currency }}</strong> that left
+          {{ disposal.account.name }}{% if acquired %}: {{ acquired.quantity|qty }}
+          {{ acquired.account.currency }}{% endif %}{% if rate %}, valued at
+          <strong>1 {{ rate.asset }} = {{ rate.zar_per_unit|zar }}</strong>, the CoinGecko rate
+          for {{ rate.date|date:"Y-m-d" }}{% endif %}.
+        </div>
+      </div>
+      <div class="card">
+        <div class="muted">Base cost</div>
+        <div class="value">{{ base_cost|zar }}</div>
+        <div class="note">
+          What the {{ rows|length }} lot{{ rows|length|pluralize }} below cost when you acquired
+          them. FIFO picks them oldest first, and each is priced on its own acquisition date —
+          never today's rate.
+        </div>
+      </div>
+      <div class="card">
+        {% if gain is None %}
+          <div class="muted">Gain</div>
+          <div class="value">—</div>
+          <div class="note">There is no rate stored for this date, so the proceeds cannot be
+            valued and no gain can be worked out.</div>
+        {% else %}
+          {% if gain < 0 %}
+            <div class="muted">Loss</div>
+            <div class="value credit">{{ gain|zar }}</div>
+          {% else %}
+            <div class="muted">Gain</div>
+            <div class="value debit">{{ gain|zar }}</div>
+          {% endif %}
+          <div class="note">
+            Proceeds less base cost. This is the figure to declare for this disposal, and this
+            disposal only.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if not complete %}
+      <p class="warn">
+        The base cost is incomplete: a lot below could not be priced, or part of this disposal
+        has nothing matched against it. The gain shown is short by whatever is missing.
+      </p>
+    {% endif %}
+
+    <h2>Lots consumed</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Acquired on</th>
+          <th>Lot</th>
+          <th>Acquired with</th>
+          <th class="num">Proceeds</th>
+          <th class="num">Base cost</th>
+          <th class="num">Gain</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr {% if row.source != "unmatched" %}class="link-row" tabindex="0"
+                  title="Show this lot on {{ row.account.name }}"
+                  data-href="{{ row.account.get_absolute_url }}#tx{{ row.entry.transaction.pk }}"
+              {% endif %}>
+            <td class="muted">{{ row.occurred_on|date:"Y-m-d" }}</td>
+            <td>
+              {% if row.source == "unmatched" %}
+                <span class="credit">{{ row.quantity|qty }} {{ row.account.currency }}</span>
+              {% else %}
+                {{ row.quantity|qty }} {{ row.account.currency }}
+              {% endif %}
+            </td>
+            <td>
+              {% if row.source == "cash" %}
+                {{ row.paid_quantity|zar }} out of {{ row.paid.account.name }}
+                — cash, so this is the cost exactly
+              {% elif row.source == "swap" %}
+                {{ row.paid_quantity|qty }} {{ row.paid.account.currency }} given up on
+                {{ row.paid.account.name }}
+              {% elif row.source == "unmatched" %}
+                <span class="credit">Nothing earlier to match against — no base cost</span>
+              {% else %}
+                Details lost, so valued at that day's rate
+              {% endif %}
+              {% if row.rate %}
+                <span class="muted">— 1 {{ row.rate.asset }} = {{ row.rate.zar_per_unit|zar }}
+                  on {{ row.rate.date|date:"Y-m-d" }}</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ row.proceeds|zar }}</td>
+            <td class="num">{{ row.cost|zar }}</td>
+            <td class="num">{{ row.gain|zar }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="muted">Nothing is matched against this disposal yet.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="3">The {{ rows|length }} lot{{ rows|length|pluralize }} added up</th>
+          <th class="num">{{ proceeds|zar }}</th>
+          <th class="num">{{ base_cost|zar }}</th>
+          <th class="num">{{ gain|zar }}</th>
+        </tr>
+      </tfoot>
+    </table>
+    {% if rows|length > 1 %}
+      <p class="muted">
+        This disposal consumed {{ rows|length }} lots, so a return that wants a date acquired
+        against a disposal takes it as {{ rows|length }} lines — one per row above, each with the
+        share of the proceeds that lot earned. They add up to the totals either way.
+      </p>
+    {% endif %}
+    <p class="muted no-print">Click a lot to open it on the account it sits in.</p>
+
+  {% elif kind == "purchase" %}
+    <div class="stats">
+      <div class="card">
+        <div class="muted">Base cost created</div>
+        <div class="value">{{ base_cost|zar }}</div>
+        <div class="note">
+          {% if acquired %}
+            The cost of the {{ acquired.quantity|qty }} {{ acquired.account.currency }} this
+            bought, carried on {{ acquired.account.name }} until a disposal consumes it.
+          {% else %}
+            The details of the other side are lost, so nothing here carries this cost.
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <p class="muted">
+      No gain to declare. Rands are the base currency, so spending them is a purchase, not a
+      disposal — there is nothing to value and nothing to gain against. This transaction is
+      where a base cost comes from: it will appear as a lot under whichever disposal eventually
+      sells what it bought.
+    </p>
+
+  {% else %}
+    <div class="stats">
+      <div class="card">
+        <div class="muted">Base cost created</div>
+        <div class="value">{{ base_cost|zar }}</div>
+        <div class="note">
+          The {{ quantity|qty }} {{ acquired.account.currency }} that arrived on
+          {{ acquired.account.name }}, valued at the rate for
+          {{ transaction.occurred_on|date:"Y-m-d" }}{% if rate %} —
+          <strong>1 {{ rate.asset }} = {{ rate.zar_per_unit|zar }}</strong>, from CoinGecko{% endif %}.
+        </div>
+      </div>
+    </div>
+    <p class="muted">
+      No gain to declare: nothing was disposed of. The details of where this asset came from are
+      lost, with no other side recorded, so the only cost available is what it was worth on the
+      day it arrived. It will appear as a lot under whichever disposal eventually consumes it.
+    </p>
+  {% endif %}
+
+  <h2>How this is worked out</h2>
+  <div class="method">
+    <p>
+      <strong>The disposal is the credit side</strong> of the transaction: the asset that left
+      an account. Its <strong>proceeds</strong> are what came in for it. Rands received are the
+      proceeds exactly. A crypto received is valued at the rate for the day of the transaction —
+      not today's rate — and that same figure is the base cost of the lot it created, so the
+      two sides of a swap always agree.
+    </p>
+    <p>
+      <strong>The lots are chosen FIFO.</strong> A disposal consumes the earliest unmatched
+      acquisitions still open on that account, oldest first, using each one up entirely before
+      touching the next, until it is covered. A lot only partly consumed contributes only that
+      share of its cost. Matching happens on its own, and is redone across the whole account
+      whenever anything on it is recorded, corrected or deleted; this page only reads the
+      result, so a disposal you untick <em>Match FIFO</em> on shows no base cost until you tick
+      it again.
+    </p>
+    <p>
+      <strong>Each lot is priced on the day it was acquired</strong>, in one of three ways, shown
+      in the <em>Acquired with</em> column:
+    </p>
+    <ul>
+      <li>
+        <strong>Bought with rands</strong> — the cost is the amount that left the rand account.
+        Exact, with no rate involved.
+      </li>
+      <li>
+        <strong>Swapped for another crypto</strong> — the cost is what the lot was worth on the
+        day it arrived, which is the same figure declared as the proceeds of that swap. Declare
+        it from its own row on the account, not from here.
+      </li>
+      <li>
+        <strong>Details lost</strong> — a one-sided transaction, with nothing recorded on the
+        other side. The cost is what it was worth on the day it arrived.
+      </li>
+    </ul>
+    <p>
+      <strong>The gain is proceeds less base cost</strong>, and it is a loss when it comes out
+      negative. Where a lot cannot be priced — no rate stored for its date — or part of the
+      disposal has nothing matched against it, that row says so and the page warns that the
+      total is short.
+    </p>
+    <p>
+      <strong>These are balancing transactions.</strong> The holdings behind this ledger are a
+      long-term capital investment, and a disposal like the one above is a small balancing move
+      between them — shifting the proportion held in one asset rather than taking money off the
+      table. It is declared as the disposal it is, in full and on the day it happened, even
+      though nothing was cashed out and the value stayed invested.
+    </p>
+  </div>
+
+  <script>
+    // A whole row is the link, so there is nothing inside it to tab to — hence the keydown.
+    document.querySelectorAll("tr.link-row").forEach((row) => {
+      const go = () => { window.location = row.dataset.href; };
+      row.addEventListener("click", go);
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") { go(); }
+      });
+    });
+  </script>
+{% endblock %}

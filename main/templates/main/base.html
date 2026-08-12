@@ -1,4 +1,4 @@
-<!doctype html>
+{% load ledger %}<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -33,7 +33,53 @@
       header nav { display: flex; gap: 1rem; flex-wrap: wrap; }
       header nav a { text-decoration: none; }
       header nav a[aria-current="page"] { color: var(--text); font-weight: 600; }
-      main { max-width: 60rem; margin: 0 auto; padding: 1.5rem; }
+      header .rates {
+        margin-left: auto;
+        display: flex;
+        gap: 1rem;
+        align-items: baseline;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        color: var(--muted);
+        font-size: .85rem;
+        font-variant-numeric: tabular-nums;
+      }
+      /* Everything that is not a page lives behind one dropdown, so the navbar stays a list of
+         accounts and the rates in hand. <details> is the whole mechanism; the script below only
+         closes it again. */
+      header .menu { position: relative; font-size: .85rem; }
+      header .menu summary {
+        cursor: pointer;
+        list-style: none;
+        color: var(--accent);
+      }
+      header .menu summary::-webkit-details-marker { display: none; }
+      header .menu summary::after { content: " ▾"; }
+      header .menu .panel {
+        position: absolute;
+        right: 0;
+        top: calc(100% + .6rem);
+        z-index: 10;
+        min-width: 13rem;
+        display: flex;
+        flex-direction: column;
+        gap: .7rem;
+        padding: .8rem;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .45);
+      }
+      header .menu .panel hr { border: 0; border-top: 1px solid var(--line); margin: 0; width: 100%; }
+      header .menu .panel select {
+        padding: .3rem .4rem;
+        font-size: .85rem;
+        margin-bottom: .5rem;
+      }
+      header .menu .panel button { width: 100%; font-size: .85rem; }
+      header .menu .panel button.link { width: auto; }
+      header .menu .panel label { margin-bottom: .3rem; }
+      main { max-width: 80rem; margin: 0 auto; padding: 1.5rem; }
       a { color: var(--accent); }
       h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
       h2 { font-size: 1.05rem; margin: 2rem 0 .75rem; }
@@ -57,6 +103,10 @@
       .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
       .stats .card { flex: 1 1 10rem; }
       .stats .value { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+      .lines { display: flex; flex-direction: column; gap: .35rem; margin-top: .75rem; }
+      .lines > div { display: flex; justify-content: space-between; gap: 1rem; }
+      .lines .amount { font-variant-numeric: tabular-nums; }
+      .lines.centred { margin-top: 0; height: 100%; justify-content: center; font-size: 1.05rem; }
       form p { margin: 0 0 .9rem; }
       label { display: block; color: var(--muted); font-size: .85rem; margin-bottom: .2rem; }
       input, select, textarea {
@@ -100,6 +150,48 @@
         margin-bottom: .4rem;
       }
       .empty { color: var(--muted); padding: 1.5rem 0; }
+      .warn {
+        background: var(--panel);
+        border-left: 3px solid var(--credit);
+        border-radius: 6px;
+        padding: .5rem .75rem;
+      }
+      a.icon { color: var(--muted); display: inline-flex; vertical-align: -.15em; }
+      a.icon:hover { color: var(--accent); }
+      tr.link-row { cursor: pointer; }
+      tr.link-row:hover td, tr.link-row:focus-visible td { background: var(--panel); }
+      tr.link-row:focus { outline: none; }
+      /* Where a link lands on a transaction: hold it tinted so it is findable in a long table,
+         after a brighter flash that catches the eye on arrival. */
+      tr:target { scroll-margin-top: 1.5rem; }
+      tr:target td { background: rgba(122, 162, 247, .12); animation: land 1.2s ease-out; }
+      @keyframes land { from { background: rgba(122, 162, 247, .38); } }
+      tfoot th { text-align: left; color: var(--text); font-size: .8rem; }
+      tfoot th.num { text-align: right; font-variant-numeric: tabular-nums; }
+      .card .note { color: var(--muted); font-size: .8rem; margin-top: .5rem; }
+      .card .note strong { color: var(--text); font-weight: 600; }
+      .method { max-width: 52rem; color: var(--muted); }
+      .method p, .method li { margin: 0 0 .8rem; }
+      .method ul { padding-left: 1.2rem; }
+      .method strong, .method em { color: var(--text); }
+      .method em { font-style: normal; }
+      /* A page handed to someone else is a printed page: dark chrome off, ink on paper, and
+         nothing left on it that only works in a browser. */
+      @media print {
+        header, .messages, .no-print { display: none; }
+        body { background: #fff; color: #000; }
+        main { max-width: none; padding: 0; }
+        a { color: #000; text-decoration: none; }
+        h2 { margin-top: 1.4rem; }
+        .muted, th, .card .note { color: #444; }
+        .card { background: #fff; border-color: #999; }
+        th, td { border-color: #999; }
+        .debit, .credit, .value { color: #000; }
+        .method { color: #000; max-width: none; }
+        .warn { border-left-color: #000; background: #fff; }
+        .stats { break-inside: avoid; }
+        table { break-inside: avoid; }
+      }
     </style>
   </head>
   <body>
@@ -113,6 +205,37 @@
           <span class="muted">no accounts yet</span>
         {% endfor %}
       </nav>
+      <div class="rates">
+        {% for rate in nav_rates %}
+          <span title="{{ rate.date|date:"Y-m-d" }}, downloaded {{ rate.fetched_at|date:"H:i" }}">
+            1 {{ rate.asset }} = {{ rate.zar_per_unit|zar }}
+          </span>
+        {% empty %}
+          <span class="muted">no rates downloaded yet</span>
+        {% endfor %}
+      </div>
+      <details class="menu">
+        <summary>Settings</summary>
+        <div class="panel">
+          <form method="post" action="{% url 'rate-refresh' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="link">Refresh rates</button>
+          </form>
+          <hr>
+          <form method="get" action="{% url 'cgt-report' %}">
+            <label for="tax-year">Tax year</label>
+            <select id="tax-year" name="year">
+              {% for year in nav_tax_years %}
+                <option value="{{ year }}" {% if year == nav_tax_year %}selected{% endif %}>
+                  {{ year }} — March to February
+                </option>
+              {% endfor %}
+            </select>
+            <button type="submit">CGT report</button>
+          </form>
+        </div>
+      </details>
     </header>
     <main>
       {% if messages %}
@@ -122,5 +245,15 @@
       {% endif %}
       {% block content %}{% endblock %}
     </main>
+    <script>
+      // <details> opens and closes itself; a menu also has to close when you give up on it.
+      const menu = document.querySelector("header .menu");
+      document.addEventListener("click", (event) => {
+        if (!menu.contains(event.target)) { menu.open = false; }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") { menu.open = false; }
+      });
+    </script>
   </body>
 </html>

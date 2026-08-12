@@ -42,6 +42,11 @@ class RatedAsset(models.TextChoices):
 # What everything is valued in. ZAR accounts are worth their balance; the rest are converted.
 BASE_CURRENCY = Currency.ZAR
 
+# The currencies pegged to the dollar rather than held for what they might become. Split out
+# from the rest of the crypto so the accounts page can show what is at risk of a price move
+# separately from what is parked.
+STABLECOINS = frozenset({Currency.USDT, Currency.USDC})
+
 
 def quantity_field(**kwargs):
     """Return the decimal field every quantity in the ledger uses."""
@@ -81,7 +86,12 @@ class Account(models.Model):
 
 
 class Transaction(models.Model):
-    """A movement of value, with exactly one entry on each of two accounts.
+    """A movement of value, with one entry on each of two accounts.
+
+    A transaction may also be one-sided, with a single entry: value that came from or went to
+    somewhere the ledger does not keep an account for. The quantity on the account is known,
+    the other side is not, and inventing an account to face it would only clutter the ledger
+    with holdings that are not held.
 
     A transaction is dated to the day and no finer. Rates are per day, and a hand-kept ledger
     does not know the minute anyway; two transactions on the same date are ordered by the
@@ -90,6 +100,14 @@ class Transaction(models.Model):
 
     occurred_on = models.DateField(default=timezone.localdate)
     description = models.CharField(max_length=200, blank=True)
+    # Whether this transaction's credit takes part in FIFO matching. Stored rather than read
+    # back off the matches, because a credit entered before the lot that covers it has no
+    # matches yet and must still be told apart from one left open deliberately — otherwise the
+    # backdated purchase that finally covers it would replay the account and skip it.
+    match_fifo = models.BooleanField(
+        default=True,
+        help_text="Whether the credit on this transaction is matched against earlier debits.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -97,6 +115,11 @@ class Transaction(models.Model):
 
     def __str__(self):
         return self.description or f"Transaction {self.pk}"
+
+    @property
+    def is_one_sided(self):
+        """Whether this transaction touches one account only, the other side being unknown."""
+        return self.entries.count() == 1
 
     @property
     def is_last(self):
@@ -118,6 +141,7 @@ class Entry(models.Model):
     A positive quantity is a debit (the account gains), a negative quantity is a credit
     (the account gives up). The two entries of a transaction do not have to be equal and
     opposite — buying BTC with ZAR credits one quantity and debits an entirely different one.
+    A one-sided transaction has this entry and no other.
     """
 
     transaction = models.ForeignKey(Transaction, related_name="entries", on_delete=models.CASCADE)
@@ -145,7 +169,7 @@ class Entry(models.Model):
 
     @property
     def counterpart(self):
-        """The entry on the other side of the same transaction."""
+        """The entry on the other side of the same transaction, or None if it is one-sided."""
         for entry in self.transaction.entries.all():
             if entry.pk != self.pk:
                 return entry

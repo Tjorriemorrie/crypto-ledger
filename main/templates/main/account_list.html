@@ -11,22 +11,23 @@
 
   <div class="stats">
     <div class="card">
-      <div class="muted">Total value</div>
-      <div class="value">{{ total|zar }}</div>
+      {% if total < 0 %}
+        <div class="muted">Loss</div>
+        <div class="value credit">{{ total|zar }}</div>
+      {% else %}
+        <div class="muted">Profit</div>
+        <div class="value debit">{{ total|zar }}</div>
+      {% endif %}
+      <div class="lines">
+        <div><span class="muted">Investment</span><span class="amount">{{ investment|zar }}</span></div>
+        <div><span class="muted">Crypto assets</span><span class="amount">{{ crypto_assets|zar }}</span></div>
+      </div>
     </div>
     <div class="card">
-      <div class="muted">Rates</div>
-      {% for rate in rates %}
-        <div class="value">1 {{ rate.asset }} = {{ rate.zar_per_unit|zar }}</div>
-        <div class="muted">{{ rate.date|date:"Y-m-d" }}, downloaded {{ rate.fetched_at|date:"H:i" }}</div>
-      {% empty %}
-        <div class="value">—</div>
-        <div class="muted">Nothing downloaded yet</div>
-      {% endfor %}
-      <form method="post" action="{% url 'rate-refresh' %}">
-        {% csrf_token %}
-        <button type="submit" class="link">Refresh</button>
-      </form>
+      <div class="lines centred">
+        <div><span class="muted">Crypto</span><span class="amount">{{ crypto|zar }}</span></div>
+        <div><span class="muted">Stablecoins</span><span class="amount">{{ stablecoins|zar }}</span></div>
+      </div>
     </div>
   </div>
 

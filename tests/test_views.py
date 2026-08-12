@@ -7,6 +7,7 @@ import pytest
 from django.db.utils import IntegrityError
 from django.urls import reverse
 
+from main.matching import match_credit_fifo
 from main.models import Account, Entry, ExchangeRate, Match, RatedAsset, Transaction
 
 pytestmark = pytest.mark.django_db
@@ -74,6 +75,25 @@ def test_transaction_form_writes_both_sides(client, btc, zar):
     assert transaction.description == "Bought BTC"
     assert transaction.entries.get(account=btc).quantity == Decimal("1.5")
     assert transaction.entries.get(account=zar).quantity == Decimal(-45000)
+
+
+def test_transaction_form_writes_one_side_when_marked_one_sided(client, btc):
+    client.post(
+        reverse("transaction-create", args=[btc.pk]),
+        {
+            "occurred_on": "2026-01-01",
+            "direction": "in",
+            "quantity": "0.5",
+            "one_sided": "on",
+            "counterpart": "",
+            "counterpart_quantity": "",
+            "description": "Airdrop",
+        },
+    )
+
+    transaction = Transaction.objects.get()
+    assert transaction.is_one_sided
+    assert transaction.entries.get().account == btc
 
 
 def test_transaction_form_defaults_the_other_quantity_for_a_transfer(client, btc, zar):
@@ -158,22 +178,47 @@ def test_zero_quantities_are_rejected(client, btc, zar):
     assert not Transaction.objects.exists()
 
 
-def test_matching_an_open_credit_from_the_account_page(client, btc, zar, record):
-    record(btc, zar, 2, day=0)
-    sell = record(btc, zar, -2, day=1)
+def test_a_backdated_purchase_matches_the_sale_that_was_short(client, btc, zar, record):
+    """Why create replays too: the sale came first, the lot covering it turned up later."""
+    sell = record(btc, zar, -2, day=5)
 
-    response = client.post(reverse("entry-match", args=[sell.pk]), follow=True)
+    client.post(
+        reverse("transaction-create", args=[btc.pk]),
+        {
+            "occurred_on": "2026-01-01",
+            "direction": "in",
+            "quantity": "2",
+            "counterpart": zar.pk,
+            "counterpart_quantity": "50000",
+            "match_fifo": "on",
+            "description": "",
+        },
+    )
 
-    assert response.status_code == 200
     assert sell.unmatched_quantity == 0
 
 
-def test_matching_a_debit_from_the_account_page_is_refused(client, btc, zar, record):
-    buy = record(btc, zar, 2, day=0)
+def test_editing_a_transaction_rewrites_both_sides(client, btc, zar, record):
+    buy = record(btc, zar, 2, day=0, counterpart_quantity=50000)
 
-    client.post(reverse("entry-match", args=[buy.pk]), follow=True)
+    client.post(
+        reverse("transaction-edit", args=[btc.pk, buy.transaction.pk]),
+        {
+            "occurred_on": "2026-02-09",
+            "direction": "in",
+            "quantity": "3",
+            "counterpart": zar.pk,
+            "counterpart_quantity": "60000",
+            "description": "Corrected",
+            "match_fifo": "on",
+        },
+    )
 
-    assert not Match.objects.exists()
+    transaction = Transaction.objects.get()
+    assert transaction.occurred_on == dt.date(2026, 2, 9)
+    assert transaction.description == "Corrected"
+    assert transaction.entries.get(account=btc).quantity == Decimal(3)
+    assert transaction.entries.get(account=zar).quantity == Decimal(-60000)
 
 
 def test_deleting_the_last_transaction(client, btc, zar, record):
@@ -214,6 +259,28 @@ def test_account_detail_shows_the_other_side_of_each_transaction(client, btc, za
 
     assert entry.counterpart.account == zar
     assert entry.counterpart.quantity == Decimal(-30000)
+
+
+def test_the_cgt_page_shows_the_gain_on_a_disposal(client, btc, zar, record):
+    record(btc, zar, 2, day=0, counterpart_quantity=50000)
+    sell = record(btc, zar, -2, day=1, counterpart_quantity=80000)
+    match_credit_fifo(sell)
+
+    response = client.get(reverse("transaction-cgt", args=[btc.pk, sell.transaction.pk]))
+
+    assert response.status_code == 200
+    assert response.context["gain"] == Decimal(30000)
+
+
+def test_the_cgt_report_totals_a_tax_year(client, btc, zar, record):
+    record(btc, zar, 2, day=0, counterpart_quantity=50000)
+    sell = record(btc, zar, -2, day=1, counterpart_quantity=80000)
+    match_credit_fifo(sell)
+
+    response = client.get(reverse("cgt-report"), {"year": 2026})
+
+    assert response.status_code == 200
+    assert response.context["gain"] == Decimal(30000)
 
 
 def test_entries_cannot_be_zero(btc, zar, record):

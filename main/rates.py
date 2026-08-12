@@ -105,6 +105,20 @@ def rates_for_date(day):
     return _store(day, prices)
 
 
+def rate_used(currency, on):
+    """The rate a quantity of `currency` was valued at on a date, for showing the working.
+
+    None when rands need no rate, or when the date could not be priced. The stablecoins come
+    back with the dollar rate, since that is genuinely what valued them.
+    """
+    if currency == BASE_CURRENCY:
+        return None
+    asset = ASSET_FOR_CURRENCY.get(currency)
+    if asset is None:
+        return None
+    return rates_for_date(on).get(asset)
+
+
 def to_zar(quantity, currency, on=None):
     """Value `quantity` of `currency` in ZAR, or None when no rate is available.
 

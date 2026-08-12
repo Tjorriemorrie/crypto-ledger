@@ -7,6 +7,7 @@ from main import views
 urlpatterns = [
     path("", views.account_list, name="account-list"),
     path("rate/refresh/", views.rate_refresh, name="rate-refresh"),
+    path("cgt/", views.cgt_report, name="cgt-report"),
     path("accounts/new/", views.account_create, name="account-create"),
     path("accounts/<int:pk>/", views.account_detail, name="account-detail"),
     path("accounts/<int:pk>/edit/", views.account_edit, name="account-edit"),
@@ -16,9 +17,18 @@ urlpatterns = [
         name="transaction-create",
     ),
     path(
+        "accounts/<int:pk>/transactions/<int:transaction_pk>/edit/",
+        views.transaction_edit,
+        name="transaction-edit",
+    ),
+    path(
         "accounts/<int:pk>/transactions/<int:transaction_pk>/delete/",
         views.transaction_delete,
         name="transaction-delete",
     ),
-    path("entries/<int:pk>/match/", views.entry_match, name="entry-match"),
+    path(
+        "accounts/<int:pk>/transactions/<int:transaction_pk>/cgt/",
+        views.transaction_cgt,
+        name="transaction-cgt",
+    ),
 ]

@@ -1,0 +1,178 @@
+{% extends "main/base.html" %}
+{% load ledger %}
+
+{% block title %}Capital gains {{ tax_year }} — crypto-ledger{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <div>
+      <h1>Capital gains — {{ tax_year }} tax year</h1>
+      <p class="muted">
+        {{ start|date:"j F Y" }} to {{ end|date:"j F Y" }} — SARS runs its year from March to
+        February and names it for the February it ends in.
+      </p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="card">
+      <div class="muted">Proceeds</div>
+      <div class="value">{{ proceeds|zar }}</div>
+      <div class="note">
+        What came in for the {{ rows|length }} disposal{{ rows|length|pluralize }} below, each
+        valued on the day it happened.
+      </div>
+    </div>
+    <div class="card">
+      <div class="muted">Base cost</div>
+      <div class="value">{{ base_cost|zar }}</div>
+      <div class="note">
+        What the lots those disposals consumed cost on the days they were acquired. FIFO picks
+        them oldest first.
+      </div>
+    </div>
+    <div class="card">
+      {% if gain < 0 %}
+        <div class="muted">Loss</div>
+        <div class="value credit">{{ gain|zar }}</div>
+      {% else %}
+        <div class="muted">Gain</div>
+        <div class="value debit">{{ gain|zar }}</div>
+      {% endif %}
+      <div class="note">
+        Proceeds less base cost, over the whole year. This is the capital gain for the
+        {{ tax_year }} year of assessment.
+      </div>
+    </div>
+  </div>
+
+  {% if not complete %}
+    <p class="warn">
+      Some rows are incomplete: a lot could not be priced, or part of a disposal has nothing
+      matched against it. Those rows are marked, and the totals are short by whatever is
+      missing. Open a row to see which.
+    </p>
+  {% endif %}
+
+  <h2>Disposals</h2>
+  {% if rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Disposed</th>
+          <th>Received</th>
+          <th class="num">Proceeds</th>
+          <th class="num">Base cost</th>
+          <th class="num">Gain</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr class="link-row" tabindex="0"
+              title="Show how this disposal is worked out"
+              data-href="{% url 'transaction-cgt' row.disposal.account.pk row.transaction.pk %}">
+            <td class="muted">{{ row.transaction.occurred_on|date:"Y-m-d" }}</td>
+            <td>{{ row.transaction.description|default:"—" }}</td>
+            {# The account is named only when it adds something — most hold the one asset and #}
+            {# are named after it, and "0.5 BTC BTC" reads worse than "0.5 BTC". #}
+            <td>
+              {{ row.quantity|qty }} {{ row.disposal.account.currency }}
+              {% if row.disposal.account.name != row.disposal.account.currency %}
+                <span class="muted">{{ row.disposal.account.name }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if row.acquired %}
+                {{ row.acquired.quantity|qty }} {{ row.acquired.account.currency }}
+                {% if row.acquired.account.name != row.acquired.account.currency %}
+                  <span class="muted">{{ row.acquired.account.name }}</span>
+                {% endif %}
+              {% else %}
+                <span class="muted">Details lost</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ row.proceeds|zar }}</td>
+            <td class="num">
+              {{ row.base_cost|zar }}
+              {% if not row.complete %}<span class="credit" title="Incomplete — a lot could not be priced, or part of this disposal has nothing matched against it">*</span>{% endif %}
+            </td>
+            <td class="num {% if row.gain < 0 %}credit{% else %}debit{% endif %}">
+              {{ row.gain|zar }}
+            </td>
+            <td class="num">
+              <a class="icon"
+                 href="{% url 'transaction-cgt' row.disposal.account.pk row.transaction.pk %}"
+                 title="Capital gain for this transaction"
+                 aria-label="Capital gain for this transaction">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor"
+                     stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                  <path d="M3.5 1.5h9v13l-1.8-1.1-1.7 1.1-1.7-1.1-1.8 1.1z"/>
+                  <path d="M6 5h4M6 8h4"/>
+                </svg>
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="4">
+            {{ tax_year }} tax year — {{ rows|length }} disposal{{ rows|length|pluralize }}
+          </th>
+          <th class="num">{{ proceeds|zar }}</th>
+          <th class="num">{{ base_cost|zar }}</th>
+          <th class="num">{{ gain|zar }}</th>
+          <th></th>
+        </tr>
+      </tfoot>
+    </table>
+    <p class="muted">Click a disposal to see the lots behind its base cost.</p>
+  {% else %}
+    <p class="empty">Nothing was disposed of in the {{ tax_year }} tax year.</p>
+  {% endif %}
+
+  <h2>How this is worked out</h2>
+  <div class="method">
+    <p>
+      <strong>Every disposal is listed once, in the year it happened.</strong> A disposal is a
+      transaction giving up a crypto — sold for rands or swapped for another crypto, it makes no
+      difference, both are declared. Buying crypto with rands is not a disposal, and neither is
+      an asset simply arriving: they create a base cost that is carried until something consumes
+      it, so they are not on this page. Rands leaving or arriving are never a disposal either —
+      the base currency cannot gain against itself.
+    </p>
+    <p>
+      <strong>Each row is the same calculation</strong> its own page shows in full: proceeds are
+      what came in, valued on the day; the base cost is what the lots FIFO consumed cost on the
+      days <em>they</em> were acquired; the gain is the difference. Open a row to see the lots
+      behind it and the method written out.
+    </p>
+    <p>
+      <strong>These are balancing transactions.</strong> The holdings behind this ledger are a
+      long-term capital investment, and the disposals listed above are small balancing moves
+      between them — shifting the proportion held in one asset rather than taking money off the
+      table. Each is declared in full, on the day it happened, even where nothing was cashed out
+      and the value stayed invested.
+    </p>
+    <p>
+      <strong>Nothing here is stored.</strong> The page reads the matching as it stands right
+      now, so correcting a transaction changes this report the moment you save it — and a
+      disposal you unticked <em>Match FIFO</em> on shows no base cost until you tick it again.
+    </p>
+  </div>
+
+  <script>
+    // A whole row is the link, so there is nothing inside it to tab to — hence the keydown.
+    document.querySelectorAll("tr.link-row").forEach((row) => {
+      const go = () => { window.location = row.dataset.href; };
+      row.addEventListener("click", go);
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") { go(); }
+      });
+    });
+  </script>
+{% endblock %}

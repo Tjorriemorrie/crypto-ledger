@@ -23,20 +23,34 @@ def btc():
 
 
 @pytest.fixture
+def usdt():
+    return Account.objects.create(name="Exchange USDT", currency=Currency.USDT)
+
+
+@pytest.fixture
 def zar():
     return Account.objects.create(name="Bank ZAR", currency=Currency.ZAR)
 
 
 @pytest.fixture
 def record():
-    """Record a transaction moving `quantity` of the asset into or out of `account`."""
+    """Record a transaction moving `quantity` of the asset into or out of `account`.
+
+    The counterpart always takes the opposite side, so a negative `quantity` is a sale: the
+    asset leaves `account` and the proceeds land on `counterpart` as a debit. Both quantities
+    are given as magnitudes; only the sign of `quantity` decides the direction.
+    """
 
     def _record(account, counterpart, quantity, *, day, counterpart_quantity=None):
         quantity = Decimal(quantity)
-        other = Decimal(counterpart_quantity if counterpart_quantity is not None else quantity)
+        other = abs(Decimal(counterpart_quantity if counterpart_quantity is not None else quantity))
         transaction = Transaction.objects.create(occurred_on=START + day * DAY)
         entry = Entry.objects.create(transaction=transaction, account=account, quantity=quantity)
-        Entry.objects.create(transaction=transaction, account=counterpart, quantity=-other)
+        Entry.objects.create(
+            transaction=transaction,
+            account=counterpart,
+            quantity=-other if quantity > 0 else other,
+        )
         return entry
 
     return _record

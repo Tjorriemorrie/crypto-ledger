@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from main.matching import match_credit_fifo, unmatched_totals
+from main.matching import match_credit_fifo, rebuild_account_matching, unmatched_totals
 from main.models import Account, Currency, Match
 
 pytestmark = pytest.mark.django_db
@@ -12,7 +12,7 @@ pytestmark = pytest.mark.django_db
 
 def test_credit_fully_consumes_a_single_earlier_debit(btc, zar, record):
     buy = record(btc, zar, 2, day=0, counterpart_quantity=50000)
-    sell = record(btc, zar, -2, day=5, counterpart_quantity=-60000)
+    sell = record(btc, zar, -2, day=5, counterpart_quantity=60000)
 
     matches = match_credit_fifo(sell)
 
@@ -106,6 +106,31 @@ def test_fractional_quantities_match_exactly(btc, zar, record):
     match_credit_fifo(sell)
 
     assert sell.unmatched_quantity == 0
+
+
+def test_rebuilding_an_account_replays_the_matching(btc, zar, record):
+    """What every write runs: the old matches go, FIFO is redone over the lots as they now are."""
+    buy = record(btc, zar, 2, day=0)
+    sell = record(btc, zar, -2, day=1)
+    match_credit_fifo(sell)
+
+    buy.quantity = Decimal(1)
+    buy.save()
+    rebuild_account_matching(btc)
+
+    assert Match.objects.count() == 1
+    assert sell.unmatched_quantity == Decimal(1)
+
+
+def test_rebuilding_passes_over_a_credit_left_unmatched_on_purpose(btc, zar, record):
+    record(btc, zar, 2, day=0)
+    sell = record(btc, zar, -2, day=1)
+    sell.transaction.match_fifo = False
+    sell.transaction.save()
+
+    rebuild_account_matching(btc)
+
+    assert sell.unmatched_quantity == Decimal(2)
 
 
 def test_unmatched_totals_reports_both_sides(btc, zar, record):
