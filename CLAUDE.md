@@ -231,6 +231,14 @@ broken. This is a single-developer ledger where the data is entered by hand and 
 visible on the page; exhaustive tests cost more to keep current than they catch here. Time
 saved on tests goes into the code being simple enough not to need them.
 
+### Run ruff after every change
+
+When a change is finished, run `uv run ruff format .` and then `uv run ruff check .`, and fix
+what they report before saying the work is done. Do it as the last step of every change, not
+just the big ones — a one-line edit breaks the lint as easily as a new module does, and lint
+found at commit time or in a later session costs more to place than lint found while the
+change is still in mind. Reporting a change as finished means it is formatted and clean.
+
 ### Work on main, never on a branch
 
 This is a single-developer repo with a linear history. All commits go directly to `main`.
