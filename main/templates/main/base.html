@@ -168,6 +168,19 @@
       @keyframes land { from { background: rgba(122, 162, 247, .38); } }
       tfoot th { text-align: left; color: var(--text); font-size: .8rem; }
       tfoot th.num { text-align: right; font-variant-numeric: tabular-nums; }
+      /* A section folded away so the figures above it read first. It prints as it stands: open it
+         before printing if the workings are wanted on the page. */
+      details.section { margin: 2rem 0 0; }
+      details.section > summary {
+        cursor: pointer;
+        list-style: none;
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin-bottom: .75rem;
+      }
+      details.section > summary::-webkit-details-marker { display: none; }
+      details.section > summary::after { content: " ▸"; color: var(--muted); }
+      details.section[open] > summary::after { content: " ▾"; }
       .card .note { color: var(--muted); font-size: .8rem; margin-top: .5rem; }
       .card .note strong { color: var(--text); font-weight: 600; }
       .method { max-width: 52rem; color: var(--muted); }

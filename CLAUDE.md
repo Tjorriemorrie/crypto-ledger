@@ -105,8 +105,11 @@ makes sense to a bookkeeper, it does not belong here.
   are: the holdings are a long-term capital investment and the disposals are small balancing
   moves between them, declared in full even though nothing was cashed out. The annual exclusion
   is nowhere in the ledger: it belongs to a whole year rather than to any one disposal, and
-  working it out is the return's job, not this app's. Pages meant to be handed over print: chrome
-  is `.no-print`, and `@media print` in `base.html` puts them on paper.
+  working it out is the return's job, not this app's. The lots consumed sit in a collapsed
+  `details.section`, so the page opens on the three figures and the workings are there for whoever
+  wants them; it prints as it stands on screen, closed unless the reader opened it. Pages meant to
+  be handed over print: chrome is `.no-print`, and `@media print` in `base.html` puts them on
+  paper.
 - **The tax year report** is the one report and the one period in the ledger, reached from a
   button and a year picker in the navbar's settings dropdown. It lists every disposal in a SARS
   tax year — 1 March to the end of February, named for the February it ends in — with its

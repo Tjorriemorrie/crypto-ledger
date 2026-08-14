@@ -91,7 +91,9 @@ Where a disposal consumed several lots the proceeds are split across them pro ra
 is a complete line with its own date acquired and the lines still add to the totals. The method
 at the bottom sets out that the holdings are a long-term capital investment and the disposals
 are small balancing moves between them, declared in full even though nothing was cashed out.
-There is a *Print* button, and printing drops the navbar and puts the page on paper in black.
+The lots are folded away behind *Lots consumed* so the three figures read first; open it when
+you want the workings, and it prints the way you left it. There is a *Print* button, and printing
+drops the navbar and puts the page on paper in black.
 
 Nothing is stored: the page reads the matches and prices them, so it always reflects the
 matching as it stands, and a disposal you unticked *Match FIFO* on shows no base cost until you

@@ -70,74 +70,76 @@
       </p>
     {% endif %}
 
-    <h2>Lots consumed</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Acquired on</th>
-          <th>Lot</th>
-          <th>Acquired with</th>
-          <th class="num">Proceeds</th>
-          <th class="num">Base cost</th>
-          <th class="num">Gain</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in rows %}
-          <tr {% if row.source != "unmatched" %}class="link-row" tabindex="0"
-                  title="Show this lot on {{ row.account.name }}"
-                  data-href="{{ row.account.get_absolute_url }}#tx{{ row.entry.transaction.pk }}"
-              {% endif %}>
-            <td class="muted">{{ row.occurred_on|date:"Y-m-d" }}</td>
-            <td>
-              {% if row.source == "unmatched" %}
-                <span class="credit">{{ row.quantity|qty }} {{ row.account.currency }}</span>
-              {% else %}
-                {{ row.quantity|qty }} {{ row.account.currency }}
-              {% endif %}
-            </td>
-            <td>
-              {% if row.source == "cash" %}
-                {{ row.paid_quantity|zar }} out of {{ row.paid.account.name }}
-                — cash, so this is the cost exactly
-              {% elif row.source == "swap" %}
-                {{ row.paid_quantity|qty }} {{ row.paid.account.currency }} given up on
-                {{ row.paid.account.name }}
-              {% elif row.source == "unmatched" %}
-                <span class="credit">Nothing earlier to match against — no base cost</span>
-              {% else %}
-                Details lost, so valued at that day's rate
-              {% endif %}
-              {% if row.rate %}
-                <span class="muted">— 1 {{ row.rate.asset }} = {{ row.rate.zar_per_unit|zar }}
-                  on {{ row.rate.date|date:"Y-m-d" }}</span>
-              {% endif %}
-            </td>
-            <td class="num">{{ row.proceeds|zar }}</td>
-            <td class="num">{{ row.cost|zar }}</td>
-            <td class="num">{{ row.gain|zar }}</td>
+    <details class="section">
+      <summary>Lots consumed ({{ rows|length }})</summary>
+      <table>
+        <thead>
+          <tr>
+            <th>Acquired on</th>
+            <th>Lot</th>
+            <th>Acquired with</th>
+            <th class="num">Proceeds</th>
+            <th class="num">Base cost</th>
+            <th class="num">Gain</th>
           </tr>
-        {% empty %}
-          <tr><td colspan="6" class="muted">Nothing is matched against this disposal yet.</td></tr>
-        {% endfor %}
-      </tbody>
-      <tfoot>
-        <tr>
-          <th colspan="3">The {{ rows|length }} lot{{ rows|length|pluralize }} added up</th>
-          <th class="num">{{ proceeds|zar }}</th>
-          <th class="num">{{ base_cost|zar }}</th>
-          <th class="num">{{ gain|zar }}</th>
-        </tr>
-      </tfoot>
-    </table>
-    {% if rows|length > 1 %}
-      <p class="muted">
-        This disposal consumed {{ rows|length }} lots, so a return that wants a date acquired
-        against a disposal takes it as {{ rows|length }} lines — one per row above, each with the
-        share of the proceeds that lot earned. They add up to the totals either way.
-      </p>
-    {% endif %}
-    <p class="muted no-print">Click a lot to open it on the account it sits in.</p>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr {% if row.source != "unmatched" %}class="link-row" tabindex="0"
+                    title="Show this lot on {{ row.account.name }}"
+                    data-href="{{ row.account.get_absolute_url }}#tx{{ row.entry.transaction.pk }}"
+                {% endif %}>
+              <td class="muted">{{ row.occurred_on|date:"Y-m-d" }}</td>
+              <td>
+                {% if row.source == "unmatched" %}
+                  <span class="credit">{{ row.quantity|qty }} {{ row.account.currency }}</span>
+                {% else %}
+                  {{ row.quantity|qty }} {{ row.account.currency }}
+                {% endif %}
+              </td>
+              <td>
+                {% if row.source == "cash" %}
+                  {{ row.paid_quantity|zar }} out of {{ row.paid.account.name }}
+                  — cash, so this is the cost exactly
+                {% elif row.source == "swap" %}
+                  {{ row.paid_quantity|qty }} {{ row.paid.account.currency }} given up on
+                  {{ row.paid.account.name }}
+                {% elif row.source == "unmatched" %}
+                  <span class="credit">Nothing earlier to match against — no base cost</span>
+                {% else %}
+                  Details lost, so valued at that day's rate
+                {% endif %}
+                {% if row.rate %}
+                  <span class="muted">— 1 {{ row.rate.asset }} = {{ row.rate.zar_per_unit|zar }}
+                    on {{ row.rate.date|date:"Y-m-d" }}</span>
+                {% endif %}
+              </td>
+              <td class="num">{{ row.proceeds|zar }}</td>
+              <td class="num">{{ row.cost|zar }}</td>
+              <td class="num">{{ row.gain|zar }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="muted">Nothing is matched against this disposal yet.</td></tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="3">The {{ rows|length }} lot{{ rows|length|pluralize }} added up</th>
+            <th class="num">{{ proceeds|zar }}</th>
+            <th class="num">{{ base_cost|zar }}</th>
+            <th class="num">{{ gain|zar }}</th>
+          </tr>
+        </tfoot>
+      </table>
+      {% if rows|length > 1 %}
+        <p class="muted">
+          This disposal consumed {{ rows|length }} lots, so a return that wants a date acquired
+          against a disposal takes it as {{ rows|length }} lines — one per row above, each with the
+          share of the proceeds that lot earned. They add up to the totals either way.
+        </p>
+      {% endif %}
+      <p class="muted no-print">Click a lot to open it on the account it sits in.</p>
+    </details>
 
   {% elif kind == "purchase" %}
     <div class="stats">
