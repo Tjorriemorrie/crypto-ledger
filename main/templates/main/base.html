@@ -168,8 +168,8 @@
       @keyframes land { from { background: rgba(122, 162, 247, .38); } }
       tfoot th { text-align: left; color: var(--text); font-size: .8rem; }
       tfoot th.num { text-align: right; font-variant-numeric: tabular-nums; }
-      /* A section folded away so the figures above it read first. It prints as it stands: open it
-         before printing if the workings are wanted on the page. */
+      /* A section folded away so the figures above it read first, opened when the workings
+         behind them are wanted. */
       details.section { margin: 2rem 0 0; }
       details.section > summary {
         cursor: pointer;
@@ -188,23 +188,6 @@
       .method ul { padding-left: 1.2rem; }
       .method strong, .method em { color: var(--text); }
       .method em { font-style: normal; }
-      /* A page handed to someone else is a printed page: dark chrome off, ink on paper, and
-         nothing left on it that only works in a browser. */
-      @media print {
-        header, .messages, .no-print { display: none; }
-        body { background: #fff; color: #000; }
-        main { max-width: none; padding: 0; }
-        a { color: #000; text-decoration: none; }
-        h2 { margin-top: 1.4rem; }
-        .muted, th, .card .note { color: #444; }
-        .card { background: #fff; border-color: #999; }
-        th, td { border-color: #999; }
-        .debit, .credit, .value { color: #000; }
-        .method { color: #000; max-width: none; }
-        .warn { border-left-color: #000; background: #fff; }
-        .stats { break-inside: avoid; }
-        table { break-inside: avoid; }
-      }
     </style>
   </head>
   <body>

@@ -12,8 +12,7 @@
         {% if transaction.description %} — {{ transaction.description }}{% endif %}
       </p>
     </div>
-    <div class="actions no-print">
-      <button type="button" class="link" onclick="window.print()">Print</button>
+    <div class="actions">
       <a href="{{ account.get_absolute_url }}">Back to {{ account.name }}</a>
     </div>
   </div>
@@ -138,7 +137,7 @@
           share of the proceeds that lot earned. They add up to the totals either way.
         </p>
       {% endif %}
-      <p class="muted no-print">Click a lot to open it on the account it sits in.</p>
+      <p class="muted">Click a lot to open it on the account it sits in.</p>
     </details>
 
   {% elif kind == "purchase" %}

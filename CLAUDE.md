@@ -107,9 +107,8 @@ makes sense to a bookkeeper, it does not belong here.
   is nowhere in the ledger: it belongs to a whole year rather than to any one disposal, and
   working it out is the return's job, not this app's. The lots consumed sit in a collapsed
   `details.section`, so the page opens on the three figures and the workings are there for whoever
-  wants them; it prints as it stands on screen, closed unless the reader opened it. Pages meant to
-  be handed over print: chrome is `.no-print`, and `@media print` in `base.html` puts them on
-  paper.
+  wants them. There is no print stylesheet and no print button anywhere: this is a screen the
+  owner reads, and the figures go onto a return by being typed into one.
 - **The tax year report** is the one report and the one period in the ledger, reached from a
   button and a year picker in the navbar's settings dropdown. It lists every disposal in a SARS
   tax year — 1 March to the end of February, named for the February it ends in — with its
