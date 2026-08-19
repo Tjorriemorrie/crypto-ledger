@@ -6,6 +6,7 @@ from decimal import Decimal
 import pytest
 from django.db.utils import IntegrityError
 from django.urls import reverse
+from django.utils import timezone
 
 from main.matching import match_credit_fifo
 from main.models import Account, Entry, ExchangeRate, Match, RatedAsset, Transaction
@@ -32,6 +33,37 @@ def test_account_list_totals_every_account_in_zar(client, btc, zar, record):
 
     # 2 BTC at R1 500 000 each, less the R1 000 000 that left the bank account.
     assert response.context["total"] == Decimal(2000000)
+
+
+def test_the_price_chart_is_its_own_fragment(client):
+    for offset in range(2):
+        ExchangeRate.objects.create(
+            date=timezone.localdate() - dt.timedelta(days=offset),
+            asset=RatedAsset.BTC,
+            zar_per_unit=Decimal(1500000 + offset),
+        )
+
+    response = client.get(reverse("price-chart"))
+
+    assert response.status_code == 200
+    assert "<svg" in response.content.decode()
+
+
+def test_the_profit_chart_is_its_own_fragment(client, btc, zar, record):
+    record(btc, zar, 2, day=0, counterpart_quantity=1000000)
+    # A rate on the day each of the last three weeks closes, which is all the chart draws from.
+    for week in range(3):
+        for asset, price in ((RatedAsset.BTC, 1500000), (RatedAsset.USD, 18)):
+            ExchangeRate.objects.create(
+                date=timezone.localdate() - dt.timedelta(weeks=week),
+                asset=asset,
+                zar_per_unit=Decimal(price),
+            )
+
+    response = client.get(reverse("profit-chart"))
+
+    assert response.status_code == 200
+    assert "<svg" in response.content.decode()
 
 
 def test_creating_an_account(client):

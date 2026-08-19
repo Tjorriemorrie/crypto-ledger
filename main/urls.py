@@ -7,7 +7,12 @@ from main import views
 urlpatterns = [
     path("", views.account_list, name="account-list"),
     path("rate/refresh/", views.rate_refresh, name="rate-refresh"),
+    path("rate/chart/", views.price_chart, name="price-chart"),
+    path("profit/chart/", views.profit_chart, name="profit-chart"),
     path("cgt/", views.cgt_report, name="cgt-report"),
+    path("analysis/", views.analysis, name="analysis"),
+    path("analysis/sweep/", views.analysis_sweep, name="analysis-sweep"),
+    path("analysis/plan/", views.analysis_plan, name="analysis-plan"),
     path("accounts/new/", views.account_create, name="account-create"),
     path("accounts/<int:pk>/", views.account_detail, name="account-detail"),
     path("accounts/<int:pk>/edit/", views.account_edit, name="account-edit"),

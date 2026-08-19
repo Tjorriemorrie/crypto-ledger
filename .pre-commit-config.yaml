@@ -1,3 +1,6 @@
+# htmx is vendored as it was published, so the hooks leave it exactly as downloaded.
+exclude: ^main/static/main/htmx\.min\.js$
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

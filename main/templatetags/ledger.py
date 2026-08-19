@@ -32,3 +32,18 @@ def zar(value):
     except (InvalidOperation, TypeError, ValueError):
         return value
     return f"R {number:,.2f}"
+
+
+@register.filter
+def abszar(value):
+    """A ZAR amount without its sign, for where the words either side already carry the direction.
+
+    "Behind by R 2,600,000" rather than "behind by R -2,600,000" — a minus sign after the word
+    for it reads as a second negative.
+    """
+    if value is None:
+        return "—"
+    try:
+        return zar(abs(Decimal(value)))
+    except (InvalidOperation, TypeError, ValueError):
+        return value

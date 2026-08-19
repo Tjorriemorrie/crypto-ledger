@@ -1,0 +1,94 @@
+{% comment %}
+  The BTC price chart, swapped into the accounts page by htmx. Plain SVG: every coordinate on
+  it was worked out in `chart.py`, and hovering a day is CSS showing that day's group.
+{% endcomment %}
+<section class="card chart">
+  {% if chart %}
+    <div class="row">
+      <h2>{{ chart.asset }} close price</h2>
+      <div class="key muted">
+        {% for entry in chart.key %}
+          <span><i class="{{ entry.css }}"></i>{{ entry.label }}</span>
+        {% endfor %}
+        {% if chart.change %}
+          <span><i class="strip"></i>{{ chart.change.span }}-day change
+            <strong>{{ chart.change.latest }}</strong></span>
+        {% endif %}
+        <span>{{ chart.first|date:"j M Y" }} — {{ chart.last|date:"j M Y" }}</span>
+      </div>
+    </div>
+    <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img"
+         aria-label="The daily {{ chart.asset }} close in rand over the last {{ days }} days.">
+      {% for tick in chart.prices %}
+        <line class="grid" x1="{{ chart.plot.x }}" y1="{{ tick.y }}"
+              x2="{{ chart.plot.right }}" y2="{{ tick.y }}"/>
+        <text class="tick" x="{{ tick.left_x }}" y="{{ tick.y }}"
+              text-anchor="end" dominant-baseline="middle">{{ tick.label }}</text>
+        <text class="tick" x="{{ tick.right_x }}" y="{{ tick.y }}"
+              text-anchor="start" dominant-baseline="middle">{{ tick.label }}</text>
+      {% endfor %}
+      {% for tick in chart.dates %}
+        <text class="tick" x="{{ tick.x }}" y="{{ tick.y }}" text-anchor="middle">{{ tick.label }}</text>
+      {% endfor %}
+      {% comment %}
+        The strip: the close against where it stood {{ chart.change.span }} days earlier, on the
+        same dates as the plot above and with a zero line of its own.
+      {% endcomment %}
+      {% if chart.change %}
+        {% for tick in chart.change.values %}
+          <line class="grid" x1="{{ chart.change.plot.x }}" y1="{{ tick.y }}"
+                x2="{{ chart.change.plot.right }}" y2="{{ tick.y }}"/>
+          <text class="tick" x="{{ tick.left_x }}" y="{{ tick.y }}"
+                text-anchor="end" dominant-baseline="middle">{{ tick.label }}</text>
+          <text class="tick" x="{{ tick.right_x }}" y="{{ tick.y }}"
+                text-anchor="start" dominant-baseline="middle">{{ tick.label }}</text>
+        {% endfor %}
+        <polygon class="strip-area" points="{{ chart.change.area }}"/>
+        <line class="axis" x1="{{ chart.change.plot.x }}" y1="{{ chart.change.zero }}"
+              x2="{{ chart.change.plot.right }}" y2="{{ chart.change.zero }}"/>
+        <polyline class="strip" points="{{ chart.change.line }}"/>
+      {% endif %}
+      {% for average in chart.averages %}
+        <polyline class="{{ average.css }}" points="{{ average.line }}"/>
+      {% endfor %}
+      {% for run in chart.close %}
+        <polyline class="{{ run.css }}" points="{{ run.line }}"/>
+      {% endfor %}
+      {% for point in chart.points %}
+        <g class="day">
+          <rect class="band" x="{{ point.band_x }}" y="{{ chart.plot.y }}"
+                width="{{ point.band_width }}" height="{{ chart.plot.height }}"/>
+          <line class="crosshair" x1="{{ point.x }}" y1="{{ chart.plot.y }}"
+                x2="{{ point.x }}" y2="{{ chart.plot.bottom }}"/>
+          <circle class="dot" cx="{{ point.x }}" cy="{{ point.y }}" r="{{ chart.dot_radius }}"/>
+          <g class="tip">
+            <rect x="{{ point.tip_x }}" y="{{ point.tip_y }}"
+                  width="{{ point.tip_width }}" height="{{ chart.tip_height }}" rx="6"/>
+            <text class="date" x="{{ point.text_x }}" y="{{ point.date_y }}">{{ point.date }}</text>
+            <text class="price" x="{{ point.text_x }}" y="{{ point.price_y }}">
+              1 {{ chart.asset }} = {{ point.price }}
+            </text>
+          </g>
+        </g>
+      {% endfor %}
+    </svg>
+    {% if chart.change %}
+      <p class="note">The strip under the price is the close against where it stood
+        <strong>{{ chart.change.span }} days</strong> earlier — the same span as the long average.
+        It is the one reading that tracks whether simply holding Bitcoin has been better than the
+        investment plans on the analysis page: over the years priced, holding beat the best of them
+        in most windows the price ended <strong>above</strong> this line, and lost to them in most
+        windows it ended <strong>below</strong> it. It stands at
+        <strong>{{ chart.change.latest }}</strong> today, so holding has recently been the
+        {% if chart.change.ahead %}better{% else %}worse{% endif %} thing to have done.
+        <em>It says nothing about the days ahead.</em> Trailing readings like this one were tested
+        against the stretches that followed them and none of them carried: holding still came out
+        ahead of the plans in two thirds or more of every forward stretch measured, including the
+        stretches that began after the lowest readings here. Like the crossings above it, this
+        describes the line already drawn, and nothing in the ledger acts on it.</p>
+    {% endif %}
+  {% else %}
+    <p class="muted">No prices to chart yet — refresh the rates and the last {{ days }} days
+      will be downloaded.</p>
+  {% endif %}
+</section>

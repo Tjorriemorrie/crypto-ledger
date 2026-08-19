@@ -1,0 +1,171 @@
+{% extends "main/base.html" %}
+{% load ledger %}
+{% comment %}
+  One combination out of a sweep, run again and listed week by week, with the same money held
+  straight in Bitcoin beside it so the plan can be judged against having no plan at all.
+{% endcomment %}
+
+{% block title %}{{ combo.plan }} — Analysis — crypto-ledger{% endblock %}
+
+{% block content %}
+  {% if not combo %}
+    <h1>Analysis</h1>
+    <p class="warn">That is not a plan this page can run. Go back to the
+      <a href="{% url 'analysis' %}">analysis</a> and pick a row.</p>
+  {% else %}
+    <div class="row">
+      <h1>{{ combo.plan }}</h1>
+      <a class="button" href="{% url 'analysis' %}">Back to the sweep</a>
+    </div>
+    <p class="muted">Moving {{ combo.percent }}% a week, on a {{ combo.short }}-day average against
+      a {{ combo.long }}-day one — the short times {{ combo.multiplier }} — and paying
+      {{ combo.fee }}% on every conversion between the two wallets, over the last {{ years }}
+      years of prices. Worked out again from those prices each time this page is opened; nothing
+      about this run is stored.</p>
+
+    {% if problem %}
+      <p class="warn">{{ problem }}</p>
+    {% else %}
+      <div class="stats">
+        <div class="card">
+          {% if result.profit < 0 %}
+            <div class="muted">Loss</div>
+            <div class="value credit">{{ result.profit|zar }}</div>
+          {% else %}
+            <div class="muted">Profit</div>
+            <div class="value debit">{{ result.profit|zar }}</div>
+          {% endif %}
+          <div class="lines">
+            <div><span class="muted">Contributed</span><span class="amount">{{ result.contributed|zar }}</span></div>
+            <div><span class="muted">Finished with</span><span class="amount">{{ result.final|zar }}</span></div>
+            <div><span class="muted">Paid in fees</span><span class="amount">{{ result.paid|zar }}</span></div>
+          </div>
+        </div>
+        {% if baseline %}
+          <div class="card">
+            <div class="muted">Baseline — hold Bitcoin</div>
+            <div class="value {% if baseline.profit < 0 %}credit{% else %}debit{% endif %}">{{ baseline.profit|zar }}</div>
+            <div class="lines">
+              <div><span class="muted">Finished with</span><span class="amount">{{ baseline.final|zar }}</span></div>
+              <div>
+                <span class="muted">This plan is</span>
+                <span class="amount {% if against_baseline < 0 %}credit{% else %}debit{% endif %}">
+                  {% if against_baseline < 0 %}behind{% else %}ahead{% endif %} by {{ against_baseline|abszar }}
+                </span>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+        <div class="card">
+          <div class="lines centred">
+            <div><span class="muted">Weeks</span><span class="amount">{{ weeks|length }}</span></div>
+            <div><span class="muted">Contributed each</span><span class="amount">R 1,000.00</span></div>
+            <div><span class="muted">Priced</span><span class="amount">{{ first|date:"j M Y" }} — {{ last|date:"j M Y" }}</span></div>
+          </div>
+        </div>
+      </div>
+
+      {% if equity %}
+        <section class="card chart">
+          <div class="row">
+            <h2>Week by week</h2>
+            <div class="key muted">
+              {% for entry in equity.key %}
+                <span><i class="{{ entry.css }}"></i>{{ entry.label }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <svg viewBox="0 0 {{ equity.width }} {{ equity.height }}" role="img"
+               aria-label="What this plan held week by week: the money contributed below the axis and the two wallets above it, with the profit over them.">
+            {% for tick in equity.values %}
+              <line class="grid" x1="{{ equity.plot.x }}" y1="{{ tick.y }}"
+                    x2="{{ equity.plot.right }}" y2="{{ tick.y }}"/>
+              <text class="tick" x="{{ tick.left_x }}" y="{{ tick.y }}"
+                    text-anchor="end" dominant-baseline="middle">{{ tick.label }}</text>
+              <text class="tick" x="{{ tick.right_x }}" y="{{ tick.y }}"
+                    text-anchor="start" dominant-baseline="middle">{{ tick.label }}</text>
+            {% endfor %}
+            {% for tick in equity.dates %}
+              <text class="tick" x="{{ tick.x }}" y="{{ tick.y }}" text-anchor="middle">{{ tick.label }}</text>
+            {% endfor %}
+            {% for bar in equity.bars %}
+              {% for segment in bar.segments %}
+                <rect class="{{ segment.css }}" x="{{ segment.x }}" y="{{ segment.y }}"
+                      width="{{ segment.width }}" height="{{ segment.height }}"/>
+              {% endfor %}
+            {% endfor %}
+            <line class="axis" x1="{{ equity.plot.x }}" y1="{{ equity.zero }}"
+                  x2="{{ equity.plot.right }}" y2="{{ equity.zero }}"/>
+            <polyline class="net" points="{{ equity.profit }}"/>
+            <line class="trend" x1="{{ equity.trend.x1 }}" y1="{{ equity.trend.y1 }}"
+                  x2="{{ equity.trend.x2 }}" y2="{{ equity.trend.y2 }}"/>
+            {% for bar in equity.bars %}
+              <g class="day">
+                <rect class="band" x="{{ bar.band_x }}" y="{{ equity.plot.y }}"
+                      width="{{ bar.band_width }}" height="{{ equity.plot.height }}"/>
+                <line class="crosshair" x1="{{ bar.x }}" y1="{{ equity.plot.y }}"
+                      x2="{{ bar.x }}" y2="{{ equity.plot.bottom }}"/>
+                <circle class="dot" cx="{{ bar.x }}" cy="{{ bar.y }}" r="{{ equity.dot_radius }}"/>
+                <g class="tip">
+                  <rect x="{{ bar.tip.x }}" y="{{ bar.tip.y }}"
+                        width="{{ bar.tip.width }}" height="{{ bar.tip.height }}" rx="6"/>
+                  {% for line in bar.tip.lines %}
+                    <text class="{{ line.css }}" x="{{ bar.tip.text_x }}" y="{{ line.y }}">{{ line.label }}</text>
+                    {% if line.value %}
+                      <text class="{{ line.css }} figure" x="{{ bar.tip.value_x }}" y="{{ line.y }}"
+                            text-anchor="end">{{ line.value }}</text>
+                    {% endif %}
+                  {% endfor %}
+                </g>
+              </g>
+            {% endfor %}
+          </svg>
+        </section>
+      {% endif %}
+
+      <h2>Every week, newest first</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Week</th>
+            <th class="num">Bitcoin price</th>
+            <th class="num">Short avg</th>
+            <th class="num">Long avg</th>
+            <th>Reading</th>
+            <th class="num">Moved</th>
+            <th class="num">Fee</th>
+            <th class="num">Rand wallet</th>
+            <th class="num">Bitcoin wallet</th>
+            <th class="num">Contributed</th>
+            <th class="num">Profit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for week in weeks %}
+            <tr>
+              <td>{{ week.date|date:"j M Y" }}</td>
+              <td class="num">{{ week.price|zar }}</td>
+              <td class="num muted">{{ week.short|zar }}</td>
+              <td class="num muted">{{ week.long|zar }}</td>
+              <td class="{% if week.signal == 'up' %}debit{% else %}credit{% endif %}">
+                {% if week.signal == 'up' %}Into Bitcoin{% else %}Into rands{% endif %}
+              </td>
+              <td class="num {% if week.moved < 0 %}credit{% else %}debit{% endif %}">{{ week.moved|zar }}</td>
+              <td class="num muted">{{ week.charged|zar }}</td>
+              <td class="num">{{ week.zar|zar }}</td>
+              <td class="num">{{ week.bitcoin|zar }}</td>
+              <td class="num muted">{{ week.contributed|zar }}</td>
+              <td class="num {% if week.profit < 0 %}credit{% else %}debit{% endif %}">{{ week.profit|zar }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted">Each week the R 1 000 contribution arrives and goes where the reading says,
+        and then {{ combo.percent }}% of the wallet the reading points away from is moved into the
+        other. <em>Moved</em> is that second step, positive into Bitcoin and negative into rands;
+        the two wallets are what was held once both had happened, valued at that week's price.
+        <em>Fee</em> is {{ combo.fee }}% of everything converted that week — the move, and the
+        contribution too on the weeks it bought Bitcoin rather than landing as rands.</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}

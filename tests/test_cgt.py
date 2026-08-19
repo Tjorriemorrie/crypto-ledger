@@ -68,3 +68,11 @@ def test_report_lists_the_disposals_of_a_tax_year_and_totals_them(btc, zar, reco
     assert result["proceeds"] == Decimal(80000)
     assert result["base_cost"] == Decimal(50000)
     assert result["gain"] == Decimal(30000)
+
+
+def test_disposal_account_is_the_wallet_the_crypto_left(btc, zar, record):
+    sell = record(btc, zar, -2, day=0, counterpart_quantity=80000)
+
+    # Read from the wallet or from the bank, the gain belongs to the wallet the BTC left.
+    assert cgt.disposal_account(sell) == btc
+    assert cgt.disposal_account(sell.counterpart) == btc

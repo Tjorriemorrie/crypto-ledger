@@ -123,6 +123,25 @@ def report(tax_year):
     }
 
 
+def disposal_account(entry):
+    """The account whose capital gain page a row on an account should reach, or None.
+
+    A gain arises only where a crypto is given up, so the page belongs to the credit side and
+    only while that credit is not rands: buying a crypto, or an asset arriving with its details
+    lost, creates a base cost but gives up nothing, and there is nothing on it to declare. The
+    row giving up the crypto reaches its own page, and so does the rand row facing it, since a
+    sale is read from the bank as often as from the wallet. The crypto acquired in a swap does
+    not: that swap is a disposal on the account it happened on and is declared from its own row
+    there, so a lot's row says where it came from without carrying the other side's workings.
+    """
+    credit = next((other for other in entry.transaction.entries.all() if other.is_credit), None)
+    if credit is None or credit.account.currency == BASE_CURRENCY:
+        return None
+    if entry.is_credit or entry.account.currency == BASE_CURRENCY:
+        return credit.account
+    return None
+
+
 def trace(transaction):
     """Work out a transaction's proceeds, base cost and gain, and the lots behind them.
 

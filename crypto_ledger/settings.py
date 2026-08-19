@@ -127,6 +127,23 @@ STATIC_URL = "static/"
 RATES_DOWNLOAD = True
 
 
+# Cache
+# https://docs.djangoproject.com/en/6.1/topics/cache/
+#
+# On disk rather than in memory: what is cached is the profit chart's weekly figures, and they have
+# to outlive the process to be worth caching at all. There is one key, so one file — it is replaced
+# each time the weeks move rather than added to, which is why nothing here expires. It goes stale
+# with the ledger, never with time, and `history.py` is what notices.
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": BASE_DIR / "cache",
+        "TIMEOUT": None,
+    }
+}
+
+
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 

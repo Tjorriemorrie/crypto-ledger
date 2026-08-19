@@ -1,0 +1,223 @@
+{% comment %}
+  One slice of the sweep, replacing the slice before it. While there is grid left it carries the
+  next slice on its own root element, so the page walks itself to the end with nothing to click.
+{% endcomment %}
+{% load ledger %}
+<div class="sweep"{% if not finished %} hx-get="{% url 'analysis-sweep' %}?{{ query }}&done={{ done }}"
+     hx-trigger="load" hx-swap="outerHTML"{% endif %}>
+  {% if problem %}
+    <p class="warn">{{ problem }}</p>
+  {% else %}
+    <div class="card">
+      <div class="row">
+        {% if finished %}
+          <div class="muted">Best of {{ total }} combinations</div>
+        {% else %}
+          <div class="muted">Working through the grid — {{ done }} of {{ total }}</div>
+        {% endif %}
+        <div class="muted">{{ first|date:"j M Y" }} — {{ last|date:"j M Y" }}</div>
+      </div>
+      <div class="progress"><span style="width: {{ progress }}%"></span></div>
+      <div class="stats">
+        <div class="card">
+          <div class="muted">{{ best.plan }}</div>
+          <div class="value">{{ best.percent }}% a week</div>
+          <div class="lines">
+            <div><span class="muted">Short average</span><span class="amount">{{ best.short }} days</span></div>
+            <div><span class="muted">Long average</span><span class="amount">{{ best.long }} days (×{{ best.multiplier }})</span></div>
+          </div>
+        </div>
+        <div class="card">
+          {% if best.profit < 0 %}
+            <div class="muted">Loss</div>
+            <div class="value credit">{{ best.profit|zar }}</div>
+          {% else %}
+            <div class="muted">Profit</div>
+            <div class="value debit">{{ best.profit|zar }}</div>
+          {% endif %}
+          <div class="lines">
+            <div><span class="muted">Contributed</span><span class="amount">{{ best.contributed|zar }}</span></div>
+            <div><span class="muted">Finished with</span><span class="amount">{{ best.final|zar }}</span></div>
+          </div>
+        </div>
+        {% if baseline %}
+          {% comment %}
+            The same money over the same weeks, straight into Bitcoin and never touched. A plan is
+            only worth running if it beats this, so it sits beside the winner rather than under it.
+          {% endcomment %}
+          <div class="card">
+            <div class="muted">Baseline — hold Bitcoin</div>
+            <div class="value {% if baseline.profit < 0 %}credit{% else %}debit{% endif %}">{{ baseline.profit|zar }}</div>
+            <div class="lines">
+              <div><span class="muted">Finished with</span><span class="amount">{{ baseline.final|zar }}</span></div>
+              <div>
+                <span class="muted">Best plan is</span>
+                <span class="amount {% if against_baseline < 0 %}credit{% else %}debit{% endif %}">
+                  {% if against_baseline < 0 %}behind{% else %}ahead{% endif %} by {{ against_baseline|abszar }}
+                </span>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if sweep %}
+      <section class="card chart">
+        <div class="row">
+          <h2>What each combination came to</h2>
+          <div class="key muted">
+            {% for entry in sweep.key %}
+              <span><i class="{{ entry.css }}"></i>{{ entry.label }}</span>
+            {% endfor %}
+            <span><i class="swatch ring"></i>Best so far</span>
+            {% if sweep.baseline %}<span><i class="baseline"></i>Hold Bitcoin</span>{% endif %}
+          </div>
+        </div>
+        <svg viewBox="0 0 {{ sweep.width }} {{ sweep.height }}" role="img"
+             aria-label="The profit each of the {{ total }} parameter combinations finished with, one mark each.">
+          {% for tick in sweep.values %}
+            <line class="grid" x1="{{ sweep.plot.x }}" y1="{{ tick.y }}"
+                  x2="{{ sweep.plot.right }}" y2="{{ tick.y }}"/>
+            <text class="tick" x="{{ tick.left_x }}" y="{{ tick.y }}"
+                  text-anchor="end" dominant-baseline="middle">{{ tick.label }}</text>
+            <text class="tick" x="{{ tick.right_x }}" y="{{ tick.y }}"
+                  text-anchor="start" dominant-baseline="middle">{{ tick.label }}</text>
+          {% endfor %}
+          {% for tick in sweep.counts %}
+            <text class="tick" x="{{ tick.x }}" y="{{ tick.y }}" text-anchor="middle">{{ tick.label }}</text>
+          {% endfor %}
+          <line class="axis" x1="{{ sweep.plot.x }}" y1="{{ sweep.zero }}"
+                x2="{{ sweep.plot.right }}" y2="{{ sweep.zero }}"/>
+          {% if sweep.baseline %}
+            <line class="baseline" x1="{{ sweep.plot.x }}" y1="{{ sweep.baseline }}"
+                  x2="{{ sweep.plot.right }}" y2="{{ sweep.baseline }}"/>
+          {% endif %}
+          {% for mark in sweep.marks %}
+            <circle class="{{ mark.css }}" cx="{{ mark.x }}" cy="{{ mark.y }}" r="3"/>
+          {% endfor %}
+          <circle class="ring" cx="{{ sweep.best.x }}" cy="{{ sweep.best.y }}"
+                  r="{{ sweep.dot_radius }}"/>
+        </svg>
+        <p class="note">A mark per combination, placed across the plot by its place in the grid and
+          up it by what it finished with. They are not a series — one combination differs from the
+          next by a single setting — so they are marks and not a line. Everything above the
+          <strong>hold Bitcoin</strong> line beat contributing the same money straight into Bitcoin
+          and leaving it alone; everything below it was not worth the running.</p>
+      </section>
+    {% endif %}
+
+    <h2>What each setting was worth</h2>
+    <p class="muted">One table per setting: every value it was swept over, and the best of the
+      {{ results|length }} run so far at that value. Each is ranked by profit, so the order down a
+      table is that setting's own answer. A combination that leads more than one setting appears in
+      each of their tables — the same run being the best 5% and the best ×5 is worth seeing twice,
+      not hiding once.</p>
+    <div class="tabs">
+      {% for group in report %}
+        <input type="radio" name="tab" id="tab-{{ group.setting }}" {% if forloop.first %}checked{% endif %}>
+        <label for="tab-{{ group.setting }}">{{ group.label }}</label>
+      {% endfor %}
+      {% for group in report %}
+        <div class="panel">
+          <table>
+            <thead>
+              <tr>
+                <th>Plan</th>
+                <th class="num">Weekly move</th>
+                <th class="num">Short</th>
+                <th class="num">Long</th>
+                <th class="num">Multiplier</th>
+                <th class="num">Fee</th>
+                <th class="num">Fees paid</th>
+                <th class="num">Finished with</th>
+                <th class="num">Profit</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in group.rows %}
+                <tr>
+                  <td class="{% if group.setting == 'strategy' %}lead{% endif %}">{{ row.plan }}</td>
+                  <td class="num {% if group.setting == 'percent' %}lead{% endif %}">{{ row.percent }}%</td>
+                  <td class="num">{{ row.short }}</td>
+                  <td class="num">{{ row.long }}</td>
+                  <td class="num {% if group.setting == 'multiplier' %}lead{% endif %}">×{{ row.multiplier }}</td>
+                  <td class="num muted">{{ row.fee }}%</td>
+                  <td class="num muted">{{ row.paid|zar }}</td>
+                  <td class="num">{{ row.final|zar }}</td>
+                  <td class="num {% if row.profit < 0 %}credit{% else %}debit{% endif %}">{{ row.profit|zar }}</td>
+                  <td class="num">
+                    <a class="button small" href="{% url 'analysis-plan' %}?strategy={{ row.strategy }}&percent={{ row.percent }}&short={{ row.short }}&multiplier={{ row.multiplier }}&fee={{ row.fee }}&years={{ years }}">Weeks</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if equity %}
+      <section class="card chart">
+        <div class="row">
+          <h2>The best combination, week by week</h2>
+          <div class="key muted">
+            {% for entry in equity.key %}
+              <span><i class="{{ entry.css }}"></i>{{ entry.label }}</span>
+            {% endfor %}
+            <span>{{ equity.first|date:"j M Y" }} — {{ equity.last|date:"j M Y" }}</span>
+          </div>
+        </div>
+        <svg viewBox="0 0 {{ equity.width }} {{ equity.height }}" role="img"
+             aria-label="What the best combination held week by week: the money contributed below the axis and the two wallets above it, with the profit over them.">
+          {% for tick in equity.values %}
+            <line class="grid" x1="{{ equity.plot.x }}" y1="{{ tick.y }}"
+                  x2="{{ equity.plot.right }}" y2="{{ tick.y }}"/>
+            <text class="tick" x="{{ tick.left_x }}" y="{{ tick.y }}"
+                  text-anchor="end" dominant-baseline="middle">{{ tick.label }}</text>
+            <text class="tick" x="{{ tick.right_x }}" y="{{ tick.y }}"
+                  text-anchor="start" dominant-baseline="middle">{{ tick.label }}</text>
+          {% endfor %}
+          {% for tick in equity.dates %}
+            <text class="tick" x="{{ tick.x }}" y="{{ tick.y }}" text-anchor="middle">{{ tick.label }}</text>
+          {% endfor %}
+          {% for bar in equity.bars %}
+            {% for segment in bar.segments %}
+              <rect class="{{ segment.css }}" x="{{ segment.x }}" y="{{ segment.y }}"
+                    width="{{ segment.width }}" height="{{ segment.height }}"/>
+            {% endfor %}
+          {% endfor %}
+          <line class="axis" x1="{{ equity.plot.x }}" y1="{{ equity.zero }}"
+                x2="{{ equity.plot.right }}" y2="{{ equity.zero }}"/>
+          <polyline class="net" points="{{ equity.profit }}"/>
+          <line class="trend" x1="{{ equity.trend.x1 }}" y1="{{ equity.trend.y1 }}"
+                x2="{{ equity.trend.x2 }}" y2="{{ equity.trend.y2 }}"/>
+          {% for bar in equity.bars %}
+            <g class="day">
+              <rect class="band" x="{{ bar.band_x }}" y="{{ equity.plot.y }}"
+                    width="{{ bar.band_width }}" height="{{ equity.plot.height }}"/>
+              <line class="crosshair" x1="{{ bar.x }}" y1="{{ equity.plot.y }}"
+                    x2="{{ bar.x }}" y2="{{ equity.plot.bottom }}"/>
+              <circle class="dot" cx="{{ bar.x }}" cy="{{ bar.y }}" r="{{ equity.dot_radius }}"/>
+              <g class="tip">
+                <rect x="{{ bar.tip.x }}" y="{{ bar.tip.y }}"
+                      width="{{ bar.tip.width }}" height="{{ bar.tip.height }}" rx="6"/>
+                {% for line in bar.tip.lines %}
+                  <text class="{{ line.css }}" x="{{ bar.tip.text_x }}" y="{{ line.y }}">{{ line.label }}</text>
+                  {% if line.value %}
+                    <text class="{{ line.css }} figure" x="{{ bar.tip.value_x }}" y="{{ line.y }}"
+                          text-anchor="end">{{ line.value }}</text>
+                  {% endif %}
+                {% endfor %}
+              </g>
+            </g>
+          {% endfor %}
+        </svg>
+        <p class="note">The same picture the accounts page draws, over a plan that was never run:
+          the money contributed hangs below the axis and the two wallets stand above it, so the
+          profit is what is left when the two ends are added back together.</p>
+      </section>
+    {% endif %}
+  {% endif %}
+</div>

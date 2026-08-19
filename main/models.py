@@ -47,6 +47,20 @@ BASE_CURRENCY = Currency.ZAR
 # separately from what is parked.
 STABLECOINS = frozenset({Currency.USDT, Currency.USDC})
 
+# The three groups the accounts page totals, in the order they stack in the profit chart, from
+# the axis outwards: the rands are what has been put in, the stablecoins are parked at a dollar
+# each, and the crypto over them is the only holding whose price actually moves.
+GROUPS = ("investment", "stablecoins", "crypto")
+
+
+def group(currency):
+    """Which of `GROUPS` a currency's value belongs to."""
+    if currency == BASE_CURRENCY:
+        return "investment"
+    if currency in STABLECOINS:
+        return "stablecoins"
+    return "crypto"
+
 
 def quantity_field(**kwargs):
     """Return the decimal field every quantity in the ledger uses."""

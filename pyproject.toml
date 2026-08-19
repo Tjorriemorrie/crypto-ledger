@@ -97,8 +97,18 @@ ignore = [
     "INP001",
     "PLC0415",  # the deferred django import is intentional
 ]
-"**/tests/*" = ["ARG", "PLR2004", "S101"]
-"**/test_*.py" = ["ARG", "PLR2004", "S101"]
+"**/tests/*" = [
+    "ARG",
+    "PLR2004",
+    "S101",
+    "SLF001", # a module's own helper is the unit under test, not somebody else's private
+]
+"**/test_*.py" = [
+    "ARG",
+    "PLR2004",
+    "S101",
+    "SLF001", # a module's own helper is the unit under test, not somebody else's private
+]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

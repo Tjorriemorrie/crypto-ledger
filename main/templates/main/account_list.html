@@ -31,6 +31,14 @@
     </div>
   </div>
 
+  {% comment %}
+    Both charts arrive on their own: the first load of a window has to download it, and the
+    totals above are what the page is for.
+  {% endcomment %}
+  <div class="card chart" hx-get="{% url 'profit-chart' %}" hx-trigger="load" hx-swap="outerHTML">
+    <p class="muted">Working out the profit day by day…</p>
+  </div>
+
   {% if rows %}
     <table>
       <thead>
@@ -59,4 +67,8 @@
   {% else %}
     <p class="empty">No accounts yet. Create one for each wallet, exchange or bank account.</p>
   {% endif %}
+
+  <div class="card chart" hx-get="{% url 'price-chart' %}" hx-trigger="load" hx-swap="outerHTML">
+    <p class="muted">Loading the Bitcoin price…</p>
+  </div>
 {% endblock %}

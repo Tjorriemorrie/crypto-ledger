@@ -1,0 +1,200 @@
+{% extends "main/base.html" %}
+
+{% block title %}Analysis — crypto-ledger{% endblock %}
+
+{% block content %}
+  <h1>Analysis</h1>
+  <p class="muted">Two weekly investment plans run over a window of Bitcoin prices, to see what
+    each would have come to. This page reads no account and records nothing: the prices behind it
+    are downloaded separately from the ledger's own rates, and no figure on it is a figure the
+    ledger holds.</p>
+
+  {% comment %}
+    The ranges to sweep, and nothing happens until Run is pressed. A GET, so a sweep is a URL that
+    can be kept — and so the slices below can be handed the same grid in their own query strings.
+  {% endcomment %}
+  <form method="get" class="card ranges">
+    {% if form.non_field_errors %}
+      <ul class="errorlist">
+        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    <div class="sliders">
+      {% for slider in form.sliders %}
+        <div class="range" data-setting="{{ slider.setting }}">
+          <div class="head">
+            <label for="{{ slider.min.id_for_label }}">{{ slider.label }}</label>
+            <span class="reading">{{ slider.min.value }} – {{ slider.max.value }}</span>
+          </div>
+          {{ slider.min }}
+          {{ slider.max }}
+          {% for error in slider.min.errors %}<p class="errorlist">{{ error }}</p>{% endfor %}
+          {% for error in slider.max.errors %}<p class="errorlist">{{ error }}</p>{% endfor %}
+        </div>
+      {% endfor %}
+      {% comment %}
+        The fee sits with the ranges but is not one: one fee runs the whole sweep, so it is a
+        single slider and no part of the combination count.
+      {% endcomment %}
+      <div class="single" data-unit="%">
+        <div class="head">
+          <label for="{{ form.fee.id_for_label }}">{{ form.fee.label }}</label>
+          <span class="reading">{{ form.fee.value }}%</span>
+        </div>
+        {{ form.fee }}
+        {% for error in form.fee.errors %}<p class="errorlist">{{ error }}</p>{% endfor %}
+      </div>
+      {% comment %}
+        And the window, for the same reason: how far back to look is asked of the sweep rather than
+        swept over, so it is one slider and no part of the combination count either. The history
+        begins in September 2014, so the top of it is everything there is rather than fifteen years.
+      {% endcomment %}
+      <div class="single" data-unit=" years">
+        <div class="head">
+          <label for="{{ form.years.id_for_label }}">{{ form.years.label }}</label>
+          <span class="reading">{{ form.years.value }} years</span>
+        </div>
+        {{ form.years }}
+        {% for error in form.years.errors %}<p class="errorlist">{{ error }}</p>{% endfor %}
+      </div>
+    </div>
+    <div class="row">
+      <p class="note"><span class="count">{{ default }}</span> combinations of the {{ most }} one
+        sweep will run. Both plans are always run; widening one range narrows another to stay
+        inside that.</p>
+      <button type="submit" name="run" value="1">Run the sweep</button>
+    </div>
+  </form>
+
+  {% comment %}
+    The sliders hold themselves to the cap as they are dragged: widen one and the others give way
+    a step at a time until the grid fits again. The form checks the same cap when it arrives, so
+    this is the convenience and not the rule.
+  {% endcomment %}
+  <script>
+    (() => {
+      const form = document.querySelector("form.ranges");
+      const cap = {{ most }};
+      const plans = {{ plans }};
+      const ranges = [...form.querySelectorAll(".range")].map((box) => ({
+        box,
+        min: box.querySelector('[data-edge="0"]'),
+        max: box.querySelector('[data-edge="1"]'),
+        reading: box.querySelector(".reading"),
+      }));
+      const count = form.querySelector(".count");
+      const span = (range) => Number(range.max.value) - Number(range.min.value) + 1;
+      const total = () => ranges.reduce((running, range) => running * span(range), plans);
+
+      // The fee and the window are one slider each and no part of the grid, so they only ever have
+      // their own reading to update.
+      for (const box of form.querySelectorAll(".single")) {
+        const slider = box.querySelector("input");
+        const reading = box.querySelector(".reading");
+        const unit = box.dataset.unit || "";
+        slider.addEventListener("input", () => { reading.textContent = `${slider.value}${unit}`; });
+      }
+
+      // Widening one range has to come out of the others, so the widest of them gives up a step,
+      // then the widest again, until the grid is back inside the cap. Taking it a step at a time
+      // rather than in one cut keeps the ranges as close to what was asked for as the cap allows.
+      const crimp = (touched) => {
+        while (total() > cap) {
+          const others = ranges.filter((range) => range !== touched && span(range) > 1);
+          const widest = others.sort((a, b) => span(b) - span(a))[0];
+          // Nothing left to give: the range being dragged has to come in itself.
+          const giving = widest || (span(touched) > 1 ? touched : null);
+          if (!giving) { return; }
+          giving.max.value = Number(giving.max.value) - 1;
+        }
+      };
+
+      const show = () => {
+        for (const range of ranges) {
+          range.reading.textContent = `${range.min.value} – ${range.max.value}`;
+        }
+        count.textContent = total().toLocaleString("en");
+      };
+
+      for (const range of ranges) {
+        for (const [edge, other] of [[range.min, range.max], [range.max, range.min]]) {
+          edge.addEventListener("input", () => {
+            // A lowest dragged past its highest takes the highest with it, and the other way
+            // about, so a range can be moved bodily without ever turning inside out.
+            if (Number(range.min.value) > Number(range.max.value)) { other.value = edge.value; }
+            crimp(range);
+            show();
+          });
+        }
+      }
+      show();
+    })();
+  </script>
+
+  {% comment %}
+    The sweep arrives in slices and asks for the next one itself, so the results fill in rather
+    than the page sitting blank until the whole grid is done.
+  {% endcomment %}
+  {% if query %}
+    <div class="card" hx-get="{% url 'analysis-sweep' %}?{{ query }}" hx-trigger="load"
+         hx-swap="outerHTML">
+      <p class="muted">Downloading the price history and starting the sweep…</p>
+    </div>
+  {% endif %}
+
+  <details class="section">
+    <summary>How this is worked out</summary>
+    <div class="method">
+      <p>Every week of the history, <strong>R 1 000</strong> arrives from outside and is put into
+        the rand wallet or the Bitcoin wallet. It is money contributed, not money moved: it is
+        never taken out of the rand wallet to buy Bitcoin, so every combination below is handed
+        exactly the same amount and what separates them is only what they did with it.</p>
+      <p>Where it goes is decided by two moving averages of the Bitcoin price — a
+        <em>short</em> one and a <em>long</em> one, the long being the short times a
+        <em>multiplier</em>. The two plans are that one reading taken the two ways round:</p>
+      <ul>
+        <li><strong>Bitcoin on a rise</strong> — the short average above the long buys Bitcoin and
+          sells rands; the short below it does the reverse.</li>
+        <li><strong>Bitcoin on a fall</strong> — the opposite throughout: the short average above
+          the long sells Bitcoin into rands, and the short below it buys.</li>
+      </ul>
+      <p>One average is always above the other, so there is always a reading and neither plan ever
+        sits a week out. Neither is the sensible one and the other the perverse one — which way
+        round the history rewarded is the question, and it is answered by running both.</p>
+      <p>On the same reading, each week also moves a <strong>percentage</strong> of one wallet into
+        the other: an up reading spends that share of the rand wallet on Bitcoin, a down reading
+        sells that share of the Bitcoin wallet into rands. The share always comes out of the wallet
+        it leaves, so neither can be spent past empty.</p>
+      <p>A <strong>fee</strong> is charged on everything that crosses between the two wallets — the
+        weekly move both ways, and the contribution as well on the weeks it buys Bitcoin rather
+        than landing as rands. It is taken off the amount converted, the way an exchange takes it.
+        A week that only puts rands in the rand wallet converts nothing and so pays nothing, and a
+        fee of 0% is a plan costed as though it were free. It is one figure for the whole sweep
+        rather than a range: what an exchange charges is a fact about where the money is held, not
+        a setting to go looking for the best value of. Move it and run again to see what a plan
+        costs somewhere dearer.</p>
+      <p>The <strong>window</strong> is how far back the sweep runs, counted off the last day
+        priced. It is one figure for the whole sweep rather than a range, for the same reason the
+        fee is: a plan run over a different stretch of history is a different question, not a better
+        answer to this one. The prices begin in September 2014, so asking for more years than there
+        are gives the whole of them — the dates the sweep actually covered are printed with the
+        results.</p>
+      <p>The sweep runs every combination of the two plans and the three ranges set at the top of
+        the page, and ranks them by what they finished with. Weeks before the long average has
+        enough days behind it to exist are not weeks the plan could have read, so each combination
+        starts where its own long average does. A winner sitting at the end of one of the ranges is
+        worth widening that range for — the best setting may well be outside it.</p>
+      <p>The prices are Bitcoin's daily close in dollars and the daily rand price of the dollar,
+        multiplied together. They come from a different source to the ledger's rates, which are
+        CoinGecko's and go no further back than a year, and they are deliberately never written
+        into the ledger — a rand on a return has to be traceable to one source.</p>
+      <p>Every sweep is set against a <strong>baseline</strong>: the same R 1 000 a week put
+        straight into Bitcoin and never sold, over the same weeks and paying the same fee. A
+        ranking of plans against each other cannot say whether any of them was worth running, and
+        this can — so a plan that comes in below the baseline lost money by being clever.</p>
+      <p>This is a reading of what has already happened, and the whole history is swept over with
+        nothing held back, so the best combination here is the one that fitted the past. It is not
+        a recommendation and nothing in the ledger acts on it.</p>
+    </div>
+  </details>
+{% endblock %}

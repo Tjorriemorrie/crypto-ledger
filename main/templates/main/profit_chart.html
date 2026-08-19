@@ -1,0 +1,72 @@
+{% comment %}
+  The profit chart, swapped into the accounts page by htmx. Plain SVG: every coordinate on it was
+  worked out in `chart.py`, and hovering a day is CSS showing that day's group.
+{% endcomment %}
+<section class="card chart">
+  {% if chart %}
+    <div class="row">
+      <h2>Profit</h2>
+      <div class="key muted">
+        {% for entry in chart.key %}
+          <span><i class="{{ entry.css }}"></i>{{ entry.label }}</span>
+        {% endfor %}
+        <span>{{ chart.first|date:"j M Y" }} — {{ chart.last|date:"j M Y" }}</span>
+      </div>
+    </div>
+    <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img"
+         aria-label="What each account held at the close of each of the last {{ weeks }} weeks, stacked into a bar a week, with the profit over them and its trend.">
+      {% for tick in chart.values %}
+        <line class="grid" x1="{{ chart.plot.x }}" y1="{{ tick.y }}"
+              x2="{{ chart.plot.right }}" y2="{{ tick.y }}"/>
+        <text class="tick" x="{{ tick.left_x }}" y="{{ tick.y }}"
+              text-anchor="end" dominant-baseline="middle">{{ tick.label }}</text>
+        <text class="tick" x="{{ tick.right_x }}" y="{{ tick.y }}"
+              text-anchor="start" dominant-baseline="middle">{{ tick.label }}</text>
+      {% endfor %}
+      {% for tick in chart.dates %}
+        <text class="tick" x="{{ tick.x }}" y="{{ tick.y }}" text-anchor="middle">{{ tick.label }}</text>
+      {% endfor %}
+      {% comment %}
+        The bars first, then the two lines over them, then the invisible hover layer on top.
+      {% endcomment %}
+      {% for bar in chart.bars %}
+        {% for segment in bar.segments %}
+          <rect class="{{ segment.css }}" x="{{ segment.x }}" y="{{ segment.y }}"
+                width="{{ segment.width }}" height="{{ segment.height }}"/>
+        {% endfor %}
+      {% endfor %}
+      <line class="axis" x1="{{ chart.plot.x }}" y1="{{ chart.zero }}"
+            x2="{{ chart.plot.right }}" y2="{{ chart.zero }}"/>
+      <polyline class="net" points="{{ chart.profit }}"/>
+      <line class="trend" x1="{{ chart.trend.x1 }}" y1="{{ chart.trend.y1 }}"
+            x2="{{ chart.trend.x2 }}" y2="{{ chart.trend.y2 }}"/>
+      {% for bar in chart.bars %}
+        <g class="day">
+          <rect class="band" x="{{ bar.band_x }}" y="{{ chart.plot.y }}"
+                width="{{ bar.band_width }}" height="{{ chart.plot.height }}"/>
+          <line class="crosshair" x1="{{ bar.x }}" y1="{{ chart.plot.y }}"
+                x2="{{ bar.x }}" y2="{{ chart.plot.bottom }}"/>
+          <circle class="dot" cx="{{ bar.x }}" cy="{{ bar.y }}" r="{{ chart.dot_radius }}"/>
+          <g class="tip">
+            <rect x="{{ bar.tip.x }}" y="{{ bar.tip.y }}"
+                  width="{{ bar.tip.width }}" height="{{ bar.tip.height }}" rx="6"/>
+            {% for line in bar.tip.lines %}
+              <text class="{{ line.css }}" x="{{ bar.tip.text_x }}" y="{{ line.y }}">{{ line.label }}</text>
+              {% if line.value %}
+                <text class="{{ line.css }} figure" x="{{ bar.tip.value_x }}" y="{{ line.y }}"
+                      text-anchor="end">{{ line.value }}</text>
+              {% endif %}
+            {% endfor %}
+          </g>
+        </g>
+      {% endfor %}
+    </svg>
+    <p class="note">Every account at the close of every week, valued at that week's rates: the
+      money put in below the axis, what it is holding above — the stablecoins, then the crypto on
+      top — and the net of the two, the profit, drawn over the bars with a straight trend through
+      it.</p>
+  {% else %}
+    <p class="muted">No profit to chart yet — record a transaction and refresh the rates, and the
+      last {{ weeks }} weeks will be worked out.</p>
+  {% endif %}
+</section>
