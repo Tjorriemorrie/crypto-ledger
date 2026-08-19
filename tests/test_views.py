@@ -293,6 +293,19 @@ def test_account_detail_shows_the_other_side_of_each_transaction(client, btc, za
     assert entry.counterpart.quantity == Decimal(-30000)
 
 
+def test_account_detail_names_the_rows_a_disposal_is_matched_with(client, btc, zar, record):
+    """What the highlighter lights up: the lots the disposal consumed, named by their rows."""
+    buy = record(btc, zar, 2, day=0)
+    sell = record(btc, zar, -2, day=1)
+    match_credit_fifo(sell)
+
+    response = client.get(btc.get_absolute_url())
+    rows = {row["entry"].pk: row["matched_rows"] for row in response.context["rows"]}
+
+    assert rows[sell.pk] == [f"tx{buy.transaction.pk}"]
+    assert rows[buy.pk] == [f"tx{sell.transaction.pk}"]
+
+
 def test_the_cgt_page_shows_the_gain_on_a_disposal(client, btc, zar, record):
     record(btc, zar, 2, day=0, counterpart_quantity=50000)
     sell = record(btc, zar, -2, day=1, counterpart_quantity=80000)

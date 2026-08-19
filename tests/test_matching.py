@@ -40,6 +40,19 @@ def test_credit_consumes_oldest_debits_first(btc, zar, record):
     assert third.unmatched_quantity == Decimal(5)
 
 
+def test_the_next_credit_carries_on_from_a_part_consumed_debit(btc, zar, record):
+    """A lot is consumed across as many disposals as it takes, never twice over."""
+    buy = record(btc, zar, 5, day=0)
+    first = record(btc, zar, -2, day=1)
+    second = record(btc, zar, -2, day=2)
+
+    match_credit_fifo(first)
+    match_credit_fifo(second)
+
+    assert second.unmatched_quantity == 0
+    assert buy.unmatched_quantity == Decimal(1)
+
+
 def test_credit_beyond_the_open_debits_stays_partly_unmatched(btc, zar, record):
     buy = record(btc, zar, 1, day=0)
     sell = record(btc, zar, -4, day=1)

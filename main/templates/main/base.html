@@ -104,10 +104,12 @@
       .row { display: flex; gap: 1rem; align-items: baseline; justify-content: space-between; }
       .actions { display: flex; gap: 1rem; align-items: baseline; }
       /* Each icon on a transaction row gets a column of its own, so a row that carries no
-         capital gain icon leaves the slot empty rather than sliding its pen across into it. */
-      td .actions { display: grid; grid-template-columns: 1fr 16px 16px; justify-items: end; }
+         highlighter or capital gain icon leaves the slot empty rather than sliding its pen
+         across into it. */
+      td .actions { display: grid; grid-template-columns: 1fr 16px 16px 16px; justify-items: end; }
       td .actions > .edit { grid-column: 2; }
-      td .actions > .cgt { grid-column: 3; }
+      td .actions > .match { grid-column: 3; }
+      td .actions > .cgt { grid-column: 4; }
       button.link.danger { color: var(--credit); }
       table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
       th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); }
@@ -177,8 +179,15 @@
         border-radius: 6px;
         padding: .5rem .75rem;
       }
-      a.icon { color: var(--muted); display: inline-flex; vertical-align: -.15em; }
-      a.icon:hover { color: var(--accent); }
+      .icon { color: var(--muted); display: inline-flex; vertical-align: -.15em; }
+      .icon:hover { color: var(--accent); }
+      button.icon { background: none; border: 0; padding: 0; cursor: pointer; }
+      /* The matching highlighter, lit while it is holding its rows up. A colour of its own, so
+         it cannot be taken for the tint a link lands on. */
+      button.icon.match[aria-pressed="true"] { color: var(--sma-short); }
+      tr.matched td { background: rgba(255, 158, 100, .13); }
+      tr.matched.matched-from td { background: rgba(255, 158, 100, .26); }
+      tr.matched td:first-child { box-shadow: inset 2px 0 0 var(--sma-short); }
       tr.link-row { cursor: pointer; }
       tr.link-row:hover td, tr.link-row:focus-visible td { background: var(--panel); }
       tr.link-row:focus { outline: none; }
@@ -418,6 +427,33 @@
       });
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") { menu.open = false; }
+      });
+
+      // The matching highlighter. A row's icon lights that row and every row on the account
+      // FIFO tied it to — the lots a disposal consumed, or the disposals that consumed a lot —
+      // and pressing it again puts them out. One at a time, since two sets lit at once could
+      // not be told apart. It only paints rows already on the page: the rows are named in the
+      // icon's data-rows, nothing is fetched, and nothing about the ledger changes.
+      document.addEventListener("click", (event) => {
+        const button = event.target.closest("button.icon.match");
+        if (!button) { return; }
+        const lit = button.getAttribute("aria-pressed") === "true";
+        document.querySelectorAll("button.icon.match[aria-pressed=true]").forEach((other) => {
+          other.setAttribute("aria-pressed", "false");
+        });
+        document.querySelectorAll("tr.matched").forEach((row) => {
+          row.classList.remove("matched", "matched-from");
+        });
+        if (lit) { return; }
+        button.setAttribute("aria-pressed", "true");
+        button.closest("tr").classList.add("matched", "matched-from");
+        for (const anchor of button.dataset.rows.split(" ")) {
+          document.getElementById(anchor)?.classList.add("matched");
+        }
+        // The first of the rows it was matched with, in the order the table runs, so a lot far
+        // down a long history is brought into view rather than left to be scrolled for.
+        const first = document.querySelector("tr.matched:not(.matched-from)");
+        if (first) { first.scrollIntoView({ block: "center", behavior: "smooth" }); }
       });
 
       // Backspace goes back a page, the way browsers used to do it: from a transaction to the

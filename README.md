@@ -101,6 +101,11 @@ to somewhere you keep no account for. The account page shows *Details lost* wher
 other side would be. One-sided transactions match FIFO like any other — a one-sided credit
 still consumes the earlier debits on its account.
 
+The other account is a link, and it opens that account **at this same movement** — scrolled to
+the row and briefly highlighted — rather than at the top of its history for you to go looking
+for it. Both sides of a transaction are one movement, so stepping across to the other side
+should land on it.
+
 Transactions are **matched FIFO**. Buying BTC leaves a debit on the BTC account with an
 unmatched quantity. Selling later creates a credit, which is matched against those earlier
 debits oldest first, consuming each one fully before moving on, until the credit is covered
@@ -118,10 +123,22 @@ recorded after it pick up the lot they should have eaten, without you going back
 The one control you have is the *Match FIFO* tick box on the transaction form. Leave it
 ticked, which is the default, and the transaction takes part. Untick it and its disposal is
 left open on purpose, and stays open no matter how often the account is replayed afterwards —
-until you edit the transaction and tick it again. Matching can also be partial: a sale larger
-than the lots open under it matches what it can and shows the rest as unmatched.
+until you edit the transaction and tick it again.
 
-A transaction row that gives up a crypto has a second icon on the right, through to its
+**Matching can be partial on either side.** A sale larger than the lots open under it matches
+what it can and shows the rest as unmatched. A lot larger than the sale that ate it keeps the
+remainder open, and the next sale carries on from there — a lot is consumed across as many
+disposals as it takes, and never twice over.
+
+A row that FIFO has matched carries a **highlighter** — the link icon between the pen and the
+capital gain page. Press it and every row on this account that row is matched with lights up:
+the lots a disposal consumed, or the disposals that consumed a lot, read the same either way.
+The page scrolls to the first of them, so a lot far down a long history is brought into view
+rather than searched for. Press it again and the highlighting goes out. It is a way of seeing
+the matching and nothing more — nothing is recorded and nothing changes. A row FIFO has not
+matched yet has no highlighter, since there is nothing to light up.
+
+A transaction row that gives up a crypto has a further icon on the right, through to its
 **capital gain** page, which is what the matching is for. That is the disposal's own row on the
 wallet the crypto left, and the row facing it on the rand account it was sold into — both open
 the same page, on the wallet. Rows that give up no crypto have no icon: buying a crypto, or an

@@ -423,6 +423,19 @@ def _back_to_row(account, transaction):
     return redirect(f"{account.get_absolute_url()}#tx{transaction.pk}")
 
 
+def _matched_rows(entry):
+    """The row anchors on this account FIFO tied `entry` to, oldest lot first.
+
+    A disposal points at the lots it consumed and a lot points at the disposals that consumed
+    it, so the highlighter reads the same matching from either end. Matching never crosses
+    accounts, so every row named here is already on the page. An entry with no matches gives an
+    empty list, and the row then carries no highlighter at all — there is nothing to light up.
+    """
+    matches = entry.matches_as_debit.all() if entry.is_debit else entry.matches_as_credit.all()
+    other = (lambda match: match.credit) if entry.is_debit else (lambda match: match.debit)
+    return [f"tx{other(match).transaction_id}" for match in matches]
+
+
 def _entry_rows(account):
     """Build the account's entry list, newest first, with running balances.
 
@@ -431,12 +444,17 @@ def _entry_rows(account):
     for are downloaded here, once each; a date that cannot be downloaded shows no value.
 
     Each row also carries the account whose capital gain page it reaches, which is nothing at
-    all on the rows that give up no crypto.
+    all on the rows that give up no crypto, and the rows FIFO tied it to, which the highlighter
+    on the row lights up.
     """
     entries = list(
         Entry.objects.filter(account=account)
         .select_related("transaction")
-        .prefetch_related("transaction__entries__account")
+        .prefetch_related(
+            "transaction__entries__account",
+            "matches_as_debit__credit",
+            "matches_as_credit__debit",
+        )
         .order_by("transaction__occurred_on", "id")
     )
 
@@ -456,6 +474,8 @@ def _entry_rows(account):
                 # Which account's capital gain page this row reaches, if any: only the rows
                 # that give up a crypto have a gain to declare.
                 "cgt_account": cgt.disposal_account(entry),
+                # The rows on this same account FIFO tied this one to, for the highlighter.
+                "matched_rows": _matched_rows(entry),
             }
         )
     # Only the newest row can offer a delete, and only while the other account it touches has

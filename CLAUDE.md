@@ -173,8 +173,17 @@ makes sense to a bookkeeper, it does not belong here.
   consuming each one fully before moving to the next, until the credit is fully matched or
   there is nothing left to match against. A debit dated the same day as the credit is
   eligible. Matching is optional on a transaction and may be
-  partial; a debit carries a remaining unmatched quantity that shrinks to 0 as credits eat it.
-  Always FIFO — never LIFO, never specific-lot, never an average cost.
+  partial on either side: a debit carries a remaining unmatched quantity that shrinks to 0 as
+  credits eat it, and the next credit carries on from where the last one left that debit, so a
+  lot is consumed across as many disposals as it takes and never twice over; a credit the open
+  debits cannot cover keeps the shortfall open. Always FIFO — never LIFO, never specific-lot,
+  never an average cost. **The matching is read off a row by its highlighter**, the icon between
+  the pen and the capital gain page: it lights that row and every row on the account it is
+  matched with — the lots a disposal consumed, or the disposals that consumed a lot, the same
+  matching read from either end — scrolls to the first of them, and puts them out when pressed
+  again. One row's set at a time, since two lit at once could not be told apart. It is a way of
+  seeing the matching and never a way of doing it: nothing is fetched, nothing is written, and
+  a row FIFO has not matched has no icon because there is nothing to light up.
 - **Capital gains** are read off the matching, never stored. **The rows that give up a crypto**
   carry an icon through to a page working out that transaction's proceeds, base cost and gain,
   plus the method written out at the bottom of the page. Those are the disposal's own row on the
@@ -191,7 +200,10 @@ makes sense to a bookkeeper, it does not belong here.
   sides agree. Every crypto-to-crypto swap is a disposal in its own right, declared on its own
   page, reached from its own row on the account it happened on — a lot's row says where it came
   from but does not carry the other transaction's workings. Clicking a lot's row goes to the
-  account holding it, scrolled to that transaction and briefly highlighted. There is exactly one
+  account holding it, scrolled to that transaction and briefly highlighted. The other account
+  named on a transaction row lands the same way — a transaction's two sides are one movement, so
+  crossing to the other one opens its account at that movement rather than at the top of its
+  history. There is exactly one
   way to arrive at a base cost here
   and there must stay exactly one — chasing swaps back to the original rands gives a second,
   equally arguable number, and a tax return with two answers to one question is worse than
